@@ -5,15 +5,20 @@ import { setupSocketHandlers } from './socket.js';
 import { setupRoutes } from './routes.js';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
-const CORS_ORIGINS = (process.env.CORS_ORIGIN || 'http://localhost:3000')
-  .split(',')
-  .map(s => s.trim());
+
+function isAllowedOrigin(origin: string | undefined): boolean {
+  if (!origin) return false;
+  const allowed = (process.env.CORS_ORIGIN || 'http://localhost:3000').split(',').map(s => s.trim());
+  if (allowed.includes(origin)) return true;
+  if (origin.endsWith('.vercel.app')) return true;
+  return false;
+}
 
 async function main() {
   const fastify = Fastify({ logger: true });
 
   await fastify.register(cors, {
-    origin: CORS_ORIGINS,
+    origin: (origin, cb) => cb(null, isAllowedOrigin(origin)),
     credentials: true,
   });
 
@@ -23,7 +28,7 @@ async function main() {
 
   const io = new SocketIOServer(fastify.server, {
     cors: {
-      origin: CORS_ORIGINS,
+      origin: (_origin, cb) => cb(null, isAllowedOrigin(_origin as string)),
       credentials: true,
     },
   });
