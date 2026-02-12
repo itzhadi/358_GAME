@@ -86,7 +86,7 @@ export function PlayingCard({
         {SUIT_SYMBOLS[card.suit]}
       </div>
 
-      <div className={cn('flex items-center gap-0.5 w-full justify-end rotate-180', small ? 'text-[10px] sm:text-xs' : 'text-xs sm:text-base')}>
+      <div className={cn('flex items-center gap-0.5 w-full rotate-180', small ? 'text-[10px] sm:text-xs' : 'text-xs sm:text-base')}>
         <span className={cn('font-black leading-none', red ? 'text-rose-600' : 'text-gray-800')}>{card.rank}</span>
         <span className={cn('leading-none', suitColor)}>{SUIT_SYMBOLS[card.suit]}</span>
       </div>
