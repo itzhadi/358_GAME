@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: 358-game-api
+    runtime: node
+    plan: free
+    buildCommand: npm install -g pnpm && pnpm install && pnpm --filter @358/shared build
+    startCommand: cd apps/api && npx tsx src/server.ts
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: CORS_ORIGIN
+        generateValue: false
+      - key: JWT_SECRET
+        generateValue: true

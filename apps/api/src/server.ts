@@ -5,26 +5,25 @@ import { setupSocketHandlers } from './socket.js';
 import { setupRoutes } from './routes.js';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
-const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:3000';
+const CORS_ORIGINS = (process.env.CORS_ORIGIN || 'http://localhost:3000')
+  .split(',')
+  .map(s => s.trim());
 
 async function main() {
   const fastify = Fastify({ logger: true });
 
   await fastify.register(cors, {
-    origin: CORS_ORIGIN,
+    origin: CORS_ORIGINS,
     credentials: true,
   });
 
-  // REST routes
   setupRoutes(fastify);
 
-  // Start the server
   await fastify.listen({ port: PORT, host: '0.0.0.0' });
 
-  // Socket.IO on top of the Fastify HTTP server
   const io = new SocketIOServer(fastify.server, {
     cors: {
-      origin: CORS_ORIGIN,
+      origin: CORS_ORIGINS,
       credentials: true,
     },
   });
