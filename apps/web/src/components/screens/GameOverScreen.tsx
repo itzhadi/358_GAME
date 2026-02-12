@@ -18,7 +18,7 @@ export function GameOverScreen() {
     .sort((a, b) => b.score - a.score);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[80dvh] p-4 text-center animate-scale-in relative overflow-hidden">
+    <div className="flex flex-col items-center flex-1 p-4 pb-24 text-center animate-scale-in relative overflow-y-auto">
       <div className="absolute top-[15%] left-[30%] w-[300px] h-[300px] rounded-full bg-amber-500/10 blur-[120px] pointer-events-none animate-pulse-soft" />
       <div className="absolute bottom-[20%] right-[20%] w-[200px] h-[200px] rounded-full bg-purple-600/10 blur-[100px] pointer-events-none" />
 

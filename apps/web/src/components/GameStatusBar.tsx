@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { GameState } from '@358/shared';
 import { SuitIcon } from './PlayingCard';
+import { useGameStore } from '@/store/gameStore';
 import { cn } from '@/lib/utils';
 
 interface GameStatusBarProps {
@@ -11,6 +12,7 @@ interface GameStatusBarProps {
 }
 
 export function GameStatusBar({ gameState, aiSeats }: GameStatusBarProps) {
+  const { resetGame } = useGameStore();
   const [expanded, setExpanded] = useState(false);
   const hasAI = aiSeats.size > 0;
   const { players, targets, tricksTakenCount, scoreTotal, victoryTarget, cutterSuit, trickNumber, handNumber, phase } = gameState;
@@ -124,6 +126,15 @@ export function GameStatusBar({ gameState, aiSeats }: GameStatusBarProps) {
               );
             })}
           </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (confirm('בטוח שאתה רוצה לצאת מהמשחק?')) resetGame();
+            }}
+            className="mt-3 w-full py-2.5 rounded-xl text-sm font-bold text-rose-400 hover:text-rose-300 glass hover:bg-rose-500/10 transition-all border border-rose-500/20"
+          >
+            🚪 יציאה מהמשחק
+          </button>
         </div>
       )}
     </div>

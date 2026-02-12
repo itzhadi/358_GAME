@@ -144,7 +144,7 @@ export function GameBoard() {
       {!hideStatusBar && (
         <GameStatusBar gameState={gameState} aiSeats={aiSeats} />
       )}
-      <div className="flex-1 flex flex-col min-h-0 overflow-hidden">{screen}</div>
+      <div className="flex-1 flex flex-col min-h-0">{screen}</div>
       {showHistory && <TrickHistory gameState={gameState} aiSeats={aiSeats} />}
     </div>
   );

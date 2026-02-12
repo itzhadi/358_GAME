@@ -18,7 +18,7 @@ export function HandScoringScreen() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center flex-1 p-4 text-center animate-scale-in relative">
+    <div className="flex flex-col items-center flex-1 p-4 pb-24 text-center animate-scale-in relative overflow-y-auto">
       <div className="absolute top-[5%] right-[-5%] w-[250px] h-[250px] rounded-full bg-purple-600/10 blur-[100px] pointer-events-none" />
 
       <h2 className="text-2xl font-black text-gradient-primary mb-1">סיכום יד {gameState.handNumber}</h2>
