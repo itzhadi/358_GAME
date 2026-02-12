@@ -42,7 +42,7 @@ export function PlayingCard({
           'rounded-xl flex items-center justify-center relative overflow-hidden',
           'bg-gradient-to-br from-purple-900/60 to-blue-900/40',
           'border border-white/10',
-          mini ? 'w-7 h-10 rounded-md' : small ? 'w-14 h-[78px]' : 'w-[76px] h-[110px] sm:w-[86px] sm:h-[124px]',
+          mini ? 'w-7 h-10 rounded-md' : small ? 'w-10 h-14 sm:w-14 sm:h-[78px]' : 'w-[52px] h-[74px] sm:w-[76px] sm:h-[110px] md:w-[86px] md:h-[124px]',
           className,
         )}
       >
@@ -61,7 +61,7 @@ export function PlayingCard({
       disabled={disabled}
       className={cn(
         'rounded-xl flex flex-col items-center justify-between relative overflow-hidden transition-all duration-200',
-        small ? 'w-14 h-[78px] p-0.5' : 'w-[76px] h-[110px] sm:w-[86px] sm:h-[124px] p-1.5',
+        small ? 'w-10 h-14 sm:w-14 sm:h-[78px] p-0.5' : 'w-[52px] h-[74px] sm:w-[76px] sm:h-[110px] md:w-[86px] md:h-[124px] p-1 sm:p-1.5',
         'bg-gradient-to-br from-white to-gray-100 shadow-xl',
         {
           'ring-2 ring-purple-400 -translate-y-3 shadow-purple-500/30 shadow-2xl scale-105 z-10': selected,
@@ -73,20 +73,20 @@ export function PlayingCard({
         className,
       )}
     >
-      <div className={cn('flex items-center gap-0.5 w-full', small ? 'text-xs' : 'text-base')}>
+      <div className={cn('flex items-center gap-0.5 w-full', small ? 'text-[10px] sm:text-xs' : 'text-xs sm:text-base')}>
         <span className={cn('font-black leading-none', red ? 'text-rose-600' : 'text-gray-800')}>{card.rank}</span>
         <span className={cn('leading-none', suitColor)}>{SUIT_SYMBOLS[card.suit]}</span>
       </div>
 
       <div className={cn(
         'font-bold leading-none',
-        small ? 'text-2xl' : 'text-4xl sm:text-5xl',
+        small ? 'text-lg sm:text-2xl' : 'text-2xl sm:text-4xl md:text-5xl',
         red ? 'text-rose-500' : 'text-gray-700',
       )}>
         {SUIT_SYMBOLS[card.suit]}
       </div>
 
-      <div className={cn('flex items-center gap-0.5 w-full justify-end rotate-180', small ? 'text-xs' : 'text-base')}>
+      <div className={cn('flex items-center gap-0.5 w-full justify-end rotate-180', small ? 'text-[10px] sm:text-xs' : 'text-xs sm:text-base')}>
         <span className={cn('font-black leading-none', red ? 'text-rose-600' : 'text-gray-800')}>{card.rank}</span>
         <span className={cn('leading-none', suitColor)}>{SUIT_SYMBOLS[card.suit]}</span>
       </div>

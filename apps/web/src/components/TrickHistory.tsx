@@ -51,7 +51,7 @@ export function TrickHistory({ gameState, aiSeats }: TrickHistoryProps) {
   return (
     <div className={cn(
       'fixed top-14 right-2 z-50 transition-all duration-300',
-      expanded ? 'w-[380px]' : 'w-auto',
+      expanded ? 'w-[calc(100vw-1rem)] sm:w-[380px]' : 'w-auto',
     )}>
       {/* Collapsed: badge */}
       {!expanded && (
