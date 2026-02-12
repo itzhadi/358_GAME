@@ -1,0 +1,261 @@
+import { Server as SocketIOServer, Socket } from 'socket.io';
+import jwt from 'jsonwebtoken';
+import { roomManager } from './roomManager.js';
+import { GameAction, Suit } from '@358/shared';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-358';
+
+interface JWTPayload {
+  roomCode: string;
+  playerId: string;
+  seatIndex: number;
+}
+
+function signToken(payload: JWTPayload): string {
+  return jwt.sign(payload, JWT_SECRET, { expiresIn: '24h' });
+}
+
+function verifyToken(token: string): JWTPayload | null {
+  try {
+    return jwt.verify(token, JWT_SECRET) as JWTPayload;
+  } catch {
+    return null;
+  }
+}
+
+export function setupSocketHandlers(io: SocketIOServer) {
+  io.on('connection', (socket: Socket) => {
+    console.log(`Socket connected: ${socket.id}`);
+
+    // Create room
+    socket.on('room:create', (data: { roomName: string; hostName: string; victoryTarget: number }) => {
+      try {
+        const room = roomManager.createRoom(data.roomName, data.hostName, data.victoryTarget, socket.id);
+        const token = signToken({ roomCode: room.code, playerId: room.players[0].id, seatIndex: 0 });
+
+        socket.join(room.code);
+        socket.emit('room:created', { code: room.code, token, seatIndex: 0 });
+        io.to(room.code).emit('room:state', {
+          code: room.code,
+          name: room.name,
+          players: room.players.map((p) => ({ name: p.name, seatIndex: p.seatIndex, connected: p.connected })),
+          status: room.status,
+        });
+      } catch (err: any) {
+        socket.emit('error', { code: 'CREATE_FAILED', message: err.message });
+      }
+    });
+
+    // Join room
+    socket.on('room:join', (data: { roomCode: string; playerName: string }) => {
+      try {
+        const result = roomManager.joinRoom(data.roomCode, data.playerName, socket.id);
+        if ('error' in result) {
+          socket.emit('error', { code: 'JOIN_FAILED', message: result.error });
+          return;
+        }
+
+        const { room, player } = result;
+        const token = signToken({ roomCode: room.code, playerId: player.id, seatIndex: player.seatIndex });
+
+        socket.join(room.code);
+        socket.emit('room:joined', { code: room.code, token, seatIndex: player.seatIndex });
+        io.to(room.code).emit('room:state', {
+          code: room.code,
+          name: room.name,
+          players: room.players.map((p) => ({ name: p.name, seatIndex: p.seatIndex, connected: p.connected })),
+          status: room.status,
+        });
+      } catch (err: any) {
+        socket.emit('error', { code: 'JOIN_FAILED', message: err.message });
+      }
+    });
+
+    // Start game (host only)
+    socket.on('game:start', (data: { token: string }) => {
+      const payload = verifyToken(data.token);
+      if (!payload) {
+        socket.emit('error', { code: 'AUTH_FAILED', message: 'Invalid token' });
+        return;
+      }
+
+      const room = roomManager.getRoom(payload.roomCode);
+      if (!room) {
+        socket.emit('error', { code: 'ROOM_NOT_FOUND', message: 'Room not found' });
+        return;
+      }
+
+      const player = room.players.find((p) => p.id === payload.playerId);
+      if (!player?.isHost) {
+        socket.emit('error', { code: 'NOT_HOST', message: 'Only host can start' });
+        return;
+      }
+
+      const state = roomManager.startGame(payload.roomCode);
+      if (!state) {
+        socket.emit('error', { code: 'START_FAILED', message: 'Cannot start game' });
+        return;
+      }
+
+      for (const p of room.players) {
+        const view = roomManager.getPlayerView(payload.roomCode, p.seatIndex);
+        if (view && p.socketId) {
+          io.to(p.socketId).emit('game:privateHand', view);
+        }
+      }
+    });
+
+    // Game actions with auth
+    const handleGameAction = (action: GameAction, token: string) => {
+      const payload = verifyToken(token);
+      if (!payload) {
+        socket.emit('error', { code: 'AUTH_FAILED', message: 'Invalid token' });
+        return;
+      }
+
+      const result = roomManager.applyAction(payload.roomCode, action);
+      if ('error' in result) {
+        socket.emit('error', { code: 'ACTION_FAILED', message: result.error });
+        return;
+      }
+
+      const room = roomManager.getRoom(payload.roomCode);
+      if (!room) return;
+
+      for (const p of room.players) {
+        const view = roomManager.getPlayerView(payload.roomCode, p.seatIndex);
+        if (view && p.socketId) {
+          io.to(p.socketId).emit('game:privateHand', view);
+        }
+      }
+    };
+
+    socket.on('exchange:give', (data: { token: string; cardId: string }) => {
+      const payload = verifyToken(data.token);
+      if (!payload) return;
+      handleGameAction(
+        { type: 'EXCHANGE_GIVE_CARD', payload: { fromSeat: payload.seatIndex, cardId: data.cardId } },
+        data.token,
+      );
+    });
+
+    socket.on('exchange:return', (data: { token: string; cardId: string }) => {
+      const payload = verifyToken(data.token);
+      if (!payload) return;
+      handleGameAction(
+        { type: 'EXCHANGE_RETURN_CARD', payload: { fromSeat: payload.seatIndex, cardId: data.cardId } },
+        data.token,
+      );
+    });
+
+    socket.on('cutter:pick', (data: { token: string; suit: Suit }) => {
+      handleGameAction(
+        { type: 'PICK_CUTTER', payload: { suit: data.suit } },
+        data.token,
+      );
+    });
+
+    socket.on('dealer:discard', (data: { token: string; cardIds: string[] }) => {
+      handleGameAction(
+        { type: 'DEALER_DISCARD_4', payload: { cardIds: data.cardIds } },
+        data.token,
+      );
+    });
+
+    socket.on('play:card', (data: { token: string; cardId: string }) => {
+      const payload = verifyToken(data.token);
+      if (!payload) return;
+      handleGameAction(
+        { type: 'PLAY_CARD', payload: { seatIndex: payload.seatIndex, cardId: data.cardId } },
+        data.token,
+      );
+    });
+
+    socket.on('game:deal', (data: { token: string }) => {
+      handleGameAction({ type: 'SHUFFLE_DEAL' }, data.token);
+    });
+
+    socket.on('game:nextHand', (data: { token: string }) => {
+      handleGameAction({ type: 'NEXT_HAND' }, data.token);
+    });
+
+    // Player explicitly leaves room
+    socket.on('room:leave', (data: { token: string }) => {
+      const payload = verifyToken(data.token);
+      if (!payload) return;
+
+      const room = roomManager.getRoom(payload.roomCode);
+      if (!room) return;
+
+      const player = room.players.find((p) => p.id === payload.playerId);
+      const playerName = player?.name ?? 'שחקן';
+
+      io.to(payload.roomCode).emit('room:closed', {
+        reason: `${playerName} עזב/ה את החדר`,
+      });
+
+      // Disconnect all sockets from the room
+      for (const p of room.players) {
+        if (p.socketId) {
+          const pSocket = io.sockets.sockets.get(p.socketId);
+          pSocket?.leave(payload.roomCode);
+        }
+      }
+
+      roomManager.removeRoom(payload.roomCode);
+    });
+
+    // Disconnect handling
+    socket.on('disconnect', () => {
+      const result = roomManager.disconnectPlayer(socket.id);
+      if (result) {
+        const room = roomManager.getRoom(result.code);
+        if (room) {
+          io.to(result.code).emit('room:closed', {
+            reason: `${result.player.name} התנתק/ה מהחדר`,
+          });
+
+          // Disconnect all sockets from the room
+          for (const p of room.players) {
+            if (p.socketId) {
+              const pSocket = io.sockets.sockets.get(p.socketId);
+              pSocket?.leave(result.code);
+            }
+          }
+
+          roomManager.removeRoom(result.code);
+        }
+      }
+    });
+
+    // Reconnection
+    socket.on('room:reconnect', (data: { token: string }) => {
+      const payload = verifyToken(data.token);
+      if (!payload) {
+        socket.emit('error', { code: 'AUTH_FAILED', message: 'Invalid token' });
+        return;
+      }
+
+      const player = roomManager.reconnectPlayer(payload.roomCode, payload.playerId, socket.id);
+      if (!player) {
+        socket.emit('error', { code: 'RECONNECT_FAILED', message: 'Cannot reconnect' });
+        return;
+      }
+
+      socket.join(payload.roomCode);
+
+      const view = roomManager.getPlayerView(payload.roomCode, payload.seatIndex);
+      if (view) {
+        socket.emit('game:privateHand', view);
+      }
+
+      const room = roomManager.getRoom(payload.roomCode);
+      if (room) {
+        io.to(payload.roomCode).emit('room:playerReconnected', {
+          playerName: player.name,
+          seatIndex: player.seatIndex,
+        });
+      }
+    });
+  });
+}

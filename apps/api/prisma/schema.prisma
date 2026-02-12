@@ -1,0 +1,73 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Room {
+  id           String   @id @default(uuid())
+  code         String   @unique @db.VarChar(6)
+  name         String   @db.VarChar(50)
+  victoryTarget Int     @default(10)
+  status       String   @default("waiting") // waiting | playing | finished
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  players      Player[]
+  hands        Hand[]
+}
+
+model Player {
+  id        String   @id @default(uuid())
+  roomId    String
+  name      String   @db.VarChar(30)
+  seatIndex Int
+  isHost    Boolean  @default(false)
+  connected Boolean  @default(true)
+  token     String?
+  createdAt DateTime @default(now())
+
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+}
+
+model Hand {
+  id          String   @id @default(uuid())
+  roomId      String
+  handNumber  Int
+  dealerIndex Int
+  cutterSuit  String?  @db.VarChar(1)
+  status      String   @default("playing") // playing | completed
+  createdAt   DateTime @default(now())
+
+  room        Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  tricks      Trick[]
+  scores      Score[]
+}
+
+model Trick {
+  id          String   @id @default(uuid())
+  handId      String
+  trickNumber Int
+  leadSuit    String   @db.VarChar(1)
+  winnerIndex Int
+  cardsJson   String   // JSON of cards played
+  createdAt   DateTime @default(now())
+
+  hand        Hand     @relation(fields: [handId], references: [id], onDelete: Cascade)
+}
+
+model Score {
+  id          String   @id @default(uuid())
+  handId      String
+  seatIndex   Int
+  target      Int
+  tricksTaken Int
+  delta       Int
+  totalAfter  Int
+  createdAt   DateTime @default(now())
+
+  hand        Hand     @relation(fields: [handId], references: [id], onDelete: Cascade)
+}

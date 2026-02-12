@@ -1,0 +1,24 @@
+{
+  "name": "3-5-8 Card Game",
+  "short_name": "3-5-8",
+  "description": "משחק קלפים 3-5-8 לשלושה שחקנים",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#111322",
+  "theme_color": "#111322",
+  "orientation": "portrait",
+  "lang": "he",
+  "dir": "rtl",
+  "icons": [
+    {
+      "src": "/icons/icon-192.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml"
+    },
+    {
+      "src": "/icons/icon-512.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}

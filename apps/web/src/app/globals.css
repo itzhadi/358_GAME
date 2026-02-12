@@ -1,0 +1,232 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 230 25% 7%;
+    --foreground: 220 20% 95%;
+    --card: 230 25% 12%;
+    --card-foreground: 220 20% 95%;
+    --primary: 265 85% 65%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 40% 16%;
+    --secondary-foreground: 220 20% 90%;
+    --muted: 230 20% 18%;
+    --muted-foreground: 220 15% 55%;
+    --accent: 45 100% 60%;
+    --accent-foreground: 0 0% 5%;
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 230 20% 20%;
+    --input: 230 20% 18%;
+    --ring: 265 85% 65%;
+    --radius: 1rem;
+    --glass: 230 25% 14%;
+    --glow-primary: 265 85% 65%;
+    --glow-accent: 45 100% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+    box-sizing: border-box;
+  }
+  body {
+    @apply bg-background text-foreground;
+    min-height: 100dvh;
+    overscroll-behavior: none;
+    -webkit-user-select: none;
+    user-select: none;
+    background:
+      radial-gradient(ellipse at 20% 0%, hsla(265, 60%, 25%, 0.3) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 100%, hsla(200, 60%, 15%, 0.3) 0%, transparent 50%),
+      hsl(230, 25%, 7%);
+    background-attachment: fixed;
+  }
+  html {
+    direction: rtl;
+  }
+}
+
+/* ====== Glass morphism ====== */
+.glass {
+  background: hsla(230, 25%, 14%, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid hsla(220, 20%, 95%, 0.08);
+}
+
+.glass-strong {
+  background: hsla(230, 25%, 14%, 0.85);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border: 1px solid hsla(220, 20%, 95%, 0.1);
+}
+
+.glass-card {
+  background: hsla(230, 25%, 16%, 0.5);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid hsla(220, 20%, 95%, 0.06);
+}
+
+/* ====== Glow effects ====== */
+.glow-primary {
+  box-shadow: 0 0 20px hsla(265, 85%, 65%, 0.15),
+              0 0 60px hsla(265, 85%, 65%, 0.05);
+}
+
+.glow-accent {
+  box-shadow: 0 0 20px hsla(45, 100%, 60%, 0.15),
+              0 0 60px hsla(45, 100%, 60%, 0.05);
+}
+
+.glow-win {
+  box-shadow: 0 0 30px hsla(45, 100%, 60%, 0.3),
+              0 0 80px hsla(45, 100%, 60%, 0.1);
+}
+
+/* ====== Text gradients ====== */
+.text-gradient-primary {
+  background: linear-gradient(135deg, hsl(265, 85%, 70%), hsl(200, 85%, 65%));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.text-gradient-gold {
+  background: linear-gradient(135deg, hsl(45, 100%, 65%), hsl(35, 100%, 55%));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ====== Card suits ====== */
+.suit-red { color: #f43f5e; }
+.suit-black { color: #e2e8f0; }
+
+/* ====== Safe area support ====== */
+.safe-top { padding-top: env(safe-area-inset-top); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+.safe-left { padding-left: env(safe-area-inset-left); }
+.safe-right { padding-right: env(safe-area-inset-right); }
+
+/* ====== Touch-friendly ====== */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* ====== Animations ====== */
+@keyframes card-play {
+  from { transform: translateY(30px) scale(0.9); opacity: 0; }
+  to { transform: translateY(0) scale(1); opacity: 1; }
+}
+.animate-card-play {
+  animation: card-play 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes throw-from-left {
+  0% { transform: translate(-120px, -20px) scale(0.4) rotate(-25deg); opacity: 0; }
+  40% { opacity: 1; }
+  100% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 1; }
+}
+.animate-throw-left {
+  animation: throw-from-left 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes throw-from-right {
+  0% { transform: translate(120px, -20px) scale(0.4) rotate(25deg); opacity: 0; }
+  40% { opacity: 1; }
+  100% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 1; }
+}
+.animate-throw-right {
+  animation: throw-from-right 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes throw-from-bottom {
+  0% { transform: translateY(80px) scale(0.5) rotate(5deg); opacity: 0; }
+  40% { opacity: 1; }
+  100% { transform: translate(0, 0) scale(1) rotate(0deg); opacity: 1; }
+}
+.animate-throw-bottom {
+  animation: throw-from-bottom 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes thinking-dots {
+  0%, 20% { opacity: 0.2; }
+  50% { opacity: 1; }
+  80%, 100% { opacity: 0.2; }
+}
+.animate-thinking span:nth-child(1) { animation: thinking-dots 1.4s infinite 0s; }
+.animate-thinking span:nth-child(2) { animation: thinking-dots 1.4s infinite 0.2s; }
+.animate-thinking span:nth-child(3) { animation: thinking-dots 1.4s infinite 0.4s; }
+
+@keyframes slide-up {
+  from { transform: translateY(40px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+.animate-slide-up {
+  animation: slide-up 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-fade-in {
+  animation: fade-in 0.4s ease-out;
+}
+
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+.animate-pulse-soft {
+  animation: pulse-soft 2s ease-in-out infinite;
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.animate-shimmer {
+  background: linear-gradient(90deg, transparent, hsla(265, 85%, 65%, 0.1), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+@keyframes scale-in {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.animate-scale-in {
+  animation: scale-in 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ====== Progress bar ====== */
+.progress-bar {
+  background: linear-gradient(90deg, hsl(265, 85%, 55%), hsl(200, 80%, 55%));
+  border-radius: 999px;
+  transition: width 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* ====== Scrollbar ====== */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: hsla(220, 20%, 95%, 0.1); border-radius: 10px; }
+
+/* ====== Input focus ====== */
+input:focus {
+  box-shadow: 0 0 0 2px hsla(265, 85%, 65%, 0.3);
+}

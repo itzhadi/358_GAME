@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Lint shared
+        run: pnpm --filter @358/shared build
+
+      - name: Test shared engine
+        run: pnpm test:shared
+
+      - name: Build web
+        run: pnpm --filter @358/web build
+
+      - name: Lint API
+        run: pnpm --filter @358/api lint

@@ -1,0 +1,20 @@
+{
+  "name": "three-five-eight",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm -r dev",
+    "build": "pnpm -r build",
+    "test": "pnpm -r test",
+    "lint": "pnpm -r lint",
+    "test:shared": "pnpm --filter @358/shared test",
+    "test:e2e": "pnpm --filter @358/web test:e2e"
+  },
+  "engines": {
+    "node": ">=18",
+    "pnpm": ">=8"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": ["esbuild", "@prisma/client", "@prisma/engines", "prisma", "unrs-resolver"]
+  }
+}
