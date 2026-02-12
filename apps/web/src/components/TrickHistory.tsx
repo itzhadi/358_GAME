@@ -41,7 +41,7 @@ function MiniCard({ rank, suit, isWinner }: { rank: string; suit: Suit; isWinner
 }
 
 export function TrickHistory({ gameState, aiSeats }: TrickHistoryProps) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const { tricksHistory, players, cutterSuit } = gameState;
 
   if (tricksHistory.length === 0) return null;
