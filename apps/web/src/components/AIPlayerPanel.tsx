@@ -42,6 +42,7 @@ interface AIPlayerPanelProps {
   side: 'left' | 'right';
   cutterSuit?: Suit | null;
   isAI?: boolean;
+  compact?: boolean;
 }
 
 export function AIPlayerPanel({
@@ -54,10 +55,54 @@ export function AIPlayerPanel({
   isThinking,
   side,
   isAI = true,
+  compact = false,
 }: AIPlayerPanelProps) {
   const avatar = getAvatarStyle(name, seatIndex);
   const isOver = tricksTaken > target;
   const isMet = tricksTaken === target;
+
+  if (compact) {
+    return (
+      <div className={cn(
+        'flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all',
+        isActive ? 'bg-purple-500/10 ring-1 ring-purple-500/30' : 'bg-white/5',
+      )}>
+        <div className={cn(
+          'relative w-8 h-8 rounded-full overflow-hidden border-2 shrink-0',
+          `bg-gradient-to-br ${avatar.colors[0]} ${avatar.colors[1]}`,
+          isActive ? 'border-purple-400' : 'border-white/20',
+          isThinking && 'border-amber-400',
+        )}>
+          <div className="w-full h-full flex items-center justify-center text-sm text-white/90">
+            {avatar.icon}
+          </div>
+          {isThinking && (
+            <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+              <div className="animate-thinking flex gap-0.5">
+                <span className="w-1 h-1 bg-amber-400 rounded-full" />
+                <span className="w-1 h-1 bg-amber-400 rounded-full" />
+                <span className="w-1 h-1 bg-amber-400 rounded-full" />
+              </div>
+            </div>
+          )}
+        </div>
+        <div className="text-right">
+          <p className={cn(
+            'text-[10px] font-bold truncate max-w-[60px]',
+            isActive ? 'text-purple-300' : 'text-slate-300',
+          )}>
+            {isAI && '🤖 '}{name}
+          </p>
+          <p className={cn(
+            'text-[10px] font-mono font-bold',
+            isOver ? 'text-green-400' : isMet ? 'text-amber-400' : 'text-muted-foreground',
+          )}>
+            {tricksTaken}/{target} · {cardCount}🃏
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={cn(
