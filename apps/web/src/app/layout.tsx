@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { PWAInstall } from '@/components/PWAInstall';
+
 import './globals.css';
 
 export const metadata: Metadata = {
@@ -35,7 +35,6 @@ export default function RootLayout({
       </head>
       <body className="safe-top safe-bottom antialiased" suppressHydrationWarning>
         {children}
-        <PWAInstall />
       </body>
     </html>
   );

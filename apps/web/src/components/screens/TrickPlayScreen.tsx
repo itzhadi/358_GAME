@@ -260,7 +260,6 @@ export function TrickPlayScreen() {
           cutterSuit={cutterSuit}
           leadSuit={isMyTurn ? (currentTrick?.leadSuit ?? null) : undefined}
           onCardClick={isMyTurn ? handleCardClick : undefined}
-          disabled={!isMyTurn}
         />
       </div>
     </div>
