@@ -32,9 +32,9 @@ export function TrickPlayScreen() {
 
   const currentTurnPlayer = gameState.currentPlayerIndex >= 0 ? gameState.players[gameState.currentPlayerIndex] : null;
   const isAiThinking = hasAI && gameState.currentPlayerIndex >= 0 && aiSeats.has(gameState.currentPlayerIndex);
-  const isTrickComplete = currentTrick?.cardsPlayed.length === 3;
 
   const { currentTrick, cutterSuit, trickNumber, tricksTakenCount, targets, players } = gameState;
+  const isTrickComplete = currentTrick?.cardsPlayed.length === 3;
 
   // Determine the two opponent seats (everyone except humanSeat)
   const allSeats = [0, 1, 2];
