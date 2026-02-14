@@ -181,7 +181,7 @@ export default function OnlineLobbyPage() {
       <div className="flex flex-col items-center justify-center min-h-[100dvh] p-6 relative overflow-hidden">
         <div className="absolute top-[-10%] right-[10%] w-[300px] h-[300px] rounded-full bg-blue-600/10 blur-[100px] pointer-events-none" />
 
-        <h1 className="text-3xl font-black text-gradient-primary mb-2">🌐 משחק אונליין</h1>
+        <h1 className="text-3xl font-black text-gradient-primary mb-2">👥 משחק עם חברים</h1>
         <p className="text-muted-foreground mb-10">שחקו עם חברים מכל מקום</p>
 
         <div className="w-full max-w-xs flex flex-col gap-4">
