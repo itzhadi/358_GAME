@@ -41,7 +41,7 @@ export function GameBoard() {
       phase === 'CUTTER_PICK' ? 2200 :
       phase === 'DEALER_DISCARD' ? 1500 :
       phase === 'SETUP_DEAL' ? 600 :
-      phase === 'TRICK_PLAY' ? (2000 + Math.random() * 1000) :
+      phase === 'TRICK_PLAY' ? (2500 + Math.random() * 2000) :
       phase === 'EXCHANGE_GIVE' || phase === 'EXCHANGE_RETURN' ? 1500 : 800;
 
     aiTimerRef.current = setTimeout(() => {
@@ -63,7 +63,7 @@ export function GameBoard() {
       if (seat >= 0 && s.aiSeats.has(seat)) {
         s.runAiTurn();
       }
-    }, 4000);
+    }, 8000);
     return () => clearInterval(interval);
   }, [hasAI]);
 
