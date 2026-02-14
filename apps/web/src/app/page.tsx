@@ -25,7 +25,7 @@ export default function HomePage() {
         </Button>
 
         <Button size="lg" variant="outline" className="w-full text-lg h-16 rounded-2xl" onClick={() => router.push('/online')}>
-          <span className="ml-2">🌐</span> משחק אונליין
+          <span className="ml-2">👥</span> שחק עם חברים
         </Button>
 
         <Button size="lg" variant="ghost" className="w-full text-base h-12 rounded-2xl" onClick={() => router.push('/rules')}>
@@ -34,7 +34,7 @@ export default function HomePage() {
       </div>
 
       <p className="text-xs text-muted-foreground/50 mt-10 relative z-10">
-        v1.0 • בנוי עם ❤️
+        נוצר באהבה 🤍 על ידי איציק דיעי
       </p>
     </div>
   );
