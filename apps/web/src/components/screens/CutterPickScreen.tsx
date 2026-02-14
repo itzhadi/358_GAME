@@ -32,9 +32,15 @@ export function CutterPickScreen() {
     const suit = aiPickCutter(dealerHand);
     setChosenSuit(suit);
 
-    const timer = setTimeout(() => setRevealStage('reveal'), 1200);
-    return () => clearTimeout(timer);
-  }, [isAiDealer, dealerSeat, gameState]);
+    const revealTimer = setTimeout(() => setRevealStage('reveal'), 1200);
+    const dispatchTimer = setTimeout(() => {
+      dispatch({ type: 'PICK_CUTTER', payload: { suit } });
+    }, 2500);
+    return () => {
+      clearTimeout(revealTimer);
+      clearTimeout(dispatchTimer);
+    };
+  }, [isAiDealer, dealerSeat, gameState, dispatch]);
 
   if (!gameState) return null;
 

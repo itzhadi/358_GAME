@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import {
   GameState, GameAction, Card, Suit, GamePhase,
   CreateGamePayload, getLegalCards, getRequiredReturnCard,
-  aiPickCutter, aiSelectDiscard, aiPlayCard,
+  aiSelectDiscard, aiPlayCard,
   aiExchangeGive, aiExchangeReturn,
 } from '@358/shared';
 import { createGame, gameReducer } from '@358/shared';
@@ -436,8 +436,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       }
 
       case 'CUTTER_PICK': {
-        const suit = aiPickCutter(hand);
-        get().dispatch({ type: 'PICK_CUTTER', payload: { suit } });
+        // CutterPickScreen handles AI cutter pick with animation + dispatch
         break;
       }
 
