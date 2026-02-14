@@ -463,7 +463,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
         if (!gameState.exchangeInfo) break;
         const { givings, givenCards, returnedCards } = gameState.exchangeInfo;
 
-        // Find the giving that needs a return from this seat
         for (const giving of givings) {
           if (giving.toSeat === seat) {
             const givenForDir = givenCards.filter(
@@ -475,8 +474,25 @@ export const useGameStore = create<GameStore>((set, get) => ({
             if (returnedForDir.length < givenForDir.length) {
               const receivedCard = givenForDir[returnedForDir.length]?.card;
               if (receivedCard) {
-                const cardId = aiExchangeReturn(hand, receivedCard);
-                get().dispatch({ type: 'EXCHANGE_RETURN_CARD', payload: { fromSeat: seat, cardId } });
+                const primaryId = aiExchangeReturn(hand, receivedCard);
+                const prevState = get().gameState;
+                get().dispatch({ type: 'EXCHANGE_RETURN_CARD', payload: { fromSeat: seat, cardId: primaryId } });
+
+                // If dispatch failed (state unchanged), try fallbacks
+                if (get().gameState === prevState) {
+                  console.warn(`AI return failed for card ${primaryId}, trying fallbacks...`);
+                  // Try the received card itself
+                  if (primaryId !== receivedCard.id && hand.some((c) => c.id === receivedCard.id)) {
+                    get().dispatch({ type: 'EXCHANGE_RETURN_CARD', payload: { fromSeat: seat, cardId: receivedCard.id } });
+                  }
+                  // If still stuck, try every card in hand
+                  if (get().gameState === prevState) {
+                    for (const c of hand) {
+                      get().dispatch({ type: 'EXCHANGE_RETURN_CARD', payload: { fromSeat: seat, cardId: c.id } });
+                      if (get().gameState !== prevState) break;
+                    }
+                  }
+                }
               }
               break;
             }

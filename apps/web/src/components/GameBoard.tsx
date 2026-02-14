@@ -52,6 +52,20 @@ export function GameBoard() {
     };
   }, [isAiTurn, phase, currentSeat, showTrickResult, showReceivedCards, showDealerKupa, showDealerReturns, runAiTurn, exchangeProgress, trickNum]);
 
+  // Heartbeat: retry AI if stuck (e.g. after a silent dispatch error)
+  useEffect(() => {
+    if (!hasAI) return;
+    const interval = setInterval(() => {
+      const s = useGameStore.getState();
+      if (!s.gameState || s.showTrickResult || s.showReceivedCards || s.showDealerKupa || s.showDealerReturns) return;
+      const seat = s.gameState.currentPlayerIndex;
+      if (seat >= 0 && s.aiSeats.has(seat)) {
+        s.runAiTurn();
+      }
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [hasAI]);
+
   useEffect(() => {
     if (!showTrickResult || !hasAI) return;
 
