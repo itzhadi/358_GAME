@@ -23,26 +23,39 @@ export function GameStatusBar({ gameState, aiSeats }: GameStatusBarProps) {
   return (
     <div className="w-full glass-strong border-b border-white/10 z-30 relative">
       {/* Compact bar — always visible */}
-      <button
-        onClick={() => setExpanded((v) => !v)}
-        className="w-full grid grid-cols-[auto_1fr_auto] items-center px-3 py-2 text-xs"
-      >
-        <div className="flex items-center gap-3">
-          <span className="text-muted-foreground font-medium">יד {Math.max(handNumber, 1)}</span>
+      <div className="grid grid-cols-[auto_1fr_auto_auto] items-center px-2 py-2 text-xs gap-1">
+        {/* Exit button — always visible */}
+        <button
+          onClick={() => {
+            if (confirm('בטוח שאתה רוצה לצאת מהמשחק?')) resetGame();
+          }}
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-rose-400/70 hover:text-rose-300 hover:bg-rose-500/15 transition-all"
+          title="יציאה מהמשחק"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+            <polyline points="16 17 21 12 16 7" />
+            <line x1="21" y1="12" x2="9" y2="12" />
+          </svg>
+        </button>
+
+        {/* Game info */}
+        <div className="flex items-center gap-2 overflow-hidden">
+          <span className="text-muted-foreground font-medium shrink-0">יד {Math.max(handNumber, 1)}</span>
           {showCutter && (
-            <span className="flex items-center gap-1.5">
-              <span className="text-muted-foreground">חותך</span>
-              <SuitIcon suit={cutterSuit!} className="text-xl" />
+            <span className="flex items-center gap-1 shrink-0">
+              <SuitIcon suit={cutterSuit!} className="text-lg" />
             </span>
           )}
           {showTricks && (
-            <span className="text-muted-foreground">
-              לקיחה <span className="text-purple-400 font-bold">{trickNumber}</span>/16
+            <span className="text-muted-foreground shrink-0">
+              <span className="text-purple-400 font-bold">{trickNumber}</span>/16
             </span>
           )}
         </div>
 
-        <div className="flex items-center justify-center gap-2">
+        {/* Player scores */}
+        <div className="flex items-center gap-1.5">
           {players.map((p, i) => {
             const taken = tricksTakenCount[i];
             const target = targets[i];
@@ -70,21 +83,44 @@ export function GameStatusBar({ gameState, aiSeats }: GameStatusBarProps) {
           })}
         </div>
 
-        <span className={cn('transition-transform text-muted-foreground', expanded && 'rotate-180')}>▾</span>
-      </button>
+        {/* Expand button */}
+        <button
+          onClick={() => setExpanded((v) => !v)}
+          className={cn(
+            'w-8 h-8 flex items-center justify-center rounded-lg transition-all',
+            expanded
+              ? 'bg-purple-500/20 text-purple-300'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-white/10',
+          )}
+          title="טבלת ניקוד"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={cn('transition-transform', expanded && 'rotate-180')}
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </button>
+      </div>
 
       {/* Expanded panel */}
       {expanded && (
         <div className="px-3 pb-3 animate-fade-in">
           <div className="glass rounded-2xl overflow-hidden">
-            {/* Header */}
             <div className="grid grid-cols-[1fr_40px_50px_50px] gap-1 px-3 py-2 text-[10px] font-bold text-muted-foreground border-b border-white/5">
               <div>שחקן</div>
               <div className="text-center">יעד</div>
               <div className="text-center">{showTricks ? 'לקח' : '—'}</div>
               <div className="text-center">ניקוד</div>
             </div>
-            {/* Players */}
             {players.map((p, i) => {
               const target = targets[i];
               const taken = tricksTakenCount[i];
@@ -126,15 +162,6 @@ export function GameStatusBar({ gameState, aiSeats }: GameStatusBarProps) {
               );
             })}
           </div>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              if (confirm('בטוח שאתה רוצה לצאת מהמשחק?')) resetGame();
-            }}
-            className="mt-3 w-full py-2.5 rounded-xl text-sm font-bold text-rose-400 hover:text-rose-300 glass hover:bg-rose-500/10 transition-all border border-rose-500/20"
-          >
-            🚪 יציאה מהמשחק
-          </button>
         </div>
       )}
     </div>
