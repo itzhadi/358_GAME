@@ -406,28 +406,68 @@ function captainLead(
   legal: Card[], hand: Card[], intel: GameIntel,
   nonCutter: Card[], cutters: Card[],
 ): string {
-  // 1. Cash masters — guaranteed winners
-  const masters = nonCutter.filter((c) => isMaster(c, intel.allKnown));
-  if (masters.length > 0) {
-    return pickBestMasterToLead(masters, hand, intel);
+  const oppCutters = remainingCuttersInOpponents(hand, intel);
+  const cutterSuit = intel.cutterSuit;
+
+  const bothVoidInCutter = cutterSuit != null &&
+    intel.opponents.every((o) => isOpponentVoid(o.seat, cutterSuit, intel));
+  const oppsWithCutters = cutterSuit != null
+    ? intel.opponents.filter((o) => !isOpponentVoid(o.seat, cutterSuit, intel)).length
+    : 0;
+
+  const nonCutterMasters = nonCutter.filter((c) => isMaster(c, intel.allKnown));
+
+  // Reserve cutters for later control: always keep at least 2
+  // Each cutter lead is itself a winning trick, so spending cutters isn't wasted
+  const reserveMin = Math.min(cutters.length, 2);
+  const canSpendCutters = cutters.length > reserveMin;
+
+  // ── PHASE 1: Clear opponents' cutters FIRST ──
+  // Lead high cutters (A, K, Q) to exhaust opponents before cashing non-cutter winners
+  if (cutters.length > 0 && oppCutters > 0 && !bothVoidInCutter && canSpendCutters) {
+    const cutterMasters = cutters.filter((c) => isMaster(c, intel.allKnown));
+
+    // Lead cutter masters (guaranteed to win)
+    if (cutterMasters.length > 0) return cutterMasters[0].id;
+
+    // Lead high cutters even if not master, if we have enough
+    // and opponents likely can't beat us (we have very high cutters)
+    if (cutters.length >= 4 && RANK_VALUE[cutters[0].rank] >= 12) {
+      return cutters[0].id;
+    }
   }
 
-  // 2. Lead high cutters to draw out opponents' cutters
-  if (cutters.length > 0) {
+  // ── PHASE 2: Cash non-cutter masters ──
+  // Now safe(r) — opponents have fewer/no cutters to ruff with
+  if (nonCutterMasters.length > 0) {
+    if (bothVoidInCutter || oppCutters === 0) {
+      // Opponents have no cutters — ALL non-cutter masters are safe
+      return pickBestMasterToLead(nonCutterMasters, hand, intel);
+    }
+    // Opponents still have cutters — prefer masters from suits where
+    // NO opponent is void (they can't ruff)
+    const safeMasters = nonCutterMasters.filter((c) => !anyOpponentVoid(c.suit, intel));
+    if (safeMasters.length > 0) return pickBestMasterToLead(safeMasters, hand, intel);
+    // Risk it anyway if we have no better option
+    return pickBestMasterToLead(nonCutterMasters, hand, intel);
+  }
+
+  // ── PHASE 3: Continue clearing cutters if opponents still have some ──
+  if (cutters.length > 2 && oppCutters > 0 && oppsWithCutters > 0) {
     const cutterMasters = cutters.filter((c) => isMaster(c, intel.allKnown));
     if (cutterMasters.length > 0) return cutterMasters[0].id;
-    if (cutters.length >= 4) return cutters[0].id; // draw out their cutters
   }
 
-  // 3. Lead from long suits where we have high cards (establish winners)
+  // ── PHASE 4: Establishment plays — probe suits to promote high cards ──
   const probe = probeLeadForEstablishment(nonCutter, hand, intel);
   if (probe) return probe;
 
-  // 4. Lead suits where opponent is VOID to draw cutters
-  const voidLead = leadToDrawCutters(nonCutter, hand, intel);
-  if (voidLead) return voidLead;
+  // ── PHASE 5: Lead suits where opponent is void to waste their cutters ──
+  if (oppCutters > 0) {
+    const voidLead = leadToDrawCutters(nonCutter, hand, intel);
+    if (voidLead) return voidLead;
+  }
 
-  // 5. Default: lowest from longest non-cutter suit
   return lowestFromLongest(nonCutter, hand, intel) || sortAsc(legal)[0].id;
 }
 
