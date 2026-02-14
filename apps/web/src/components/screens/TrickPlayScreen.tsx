@@ -30,8 +30,9 @@ export function TrickPlayScreen() {
     });
   };
 
-  const currentTurnPlayer = gameState.players[gameState.currentPlayerIndex];
-  const isAiThinking = hasAI && aiSeats.has(gameState.currentPlayerIndex);
+  const currentTurnPlayer = gameState.currentPlayerIndex >= 0 ? gameState.players[gameState.currentPlayerIndex] : null;
+  const isAiThinking = hasAI && gameState.currentPlayerIndex >= 0 && aiSeats.has(gameState.currentPlayerIndex);
+  const isTrickComplete = currentTrick?.cardsPlayed.length === 3;
 
   const { currentTrick, cutterSuit, trickNumber, tricksTakenCount, targets, players } = gameState;
 
@@ -45,18 +46,20 @@ export function TrickPlayScreen() {
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
       {/* Turn indicator */}
-      <div className={cn('text-center py-1.5 transition-colors', isMyTurn ? 'glass-strong' : 'glass')}>
-        {isMyTurn ? (
+      <div className={cn('text-center py-1.5 transition-colors', isTrickComplete ? 'glass-strong' : isMyTurn ? 'glass-strong' : 'glass')}>
+        {isTrickComplete ? (
+          <span className="text-xs font-bold text-amber-400 animate-pulse-soft">🏆 לקיחה הושלמה!</span>
+        ) : isMyTurn ? (
           <span className="text-xs font-bold text-purple-400 animate-pulse-soft">תורך לשחק! 🎯</span>
         ) : isAiThinking ? (
           <span className="text-xs text-muted-foreground">
             🤖 {currentTurnPlayer?.name} חושב...
           </span>
-        ) : (
+        ) : currentTurnPlayer ? (
           <span className="text-xs text-muted-foreground">
-            ממתין ל{currentTurnPlayer?.name}...
+            ממתין ל{currentTurnPlayer.name}...
           </span>
-        )}
+        ) : null}
       </div>
 
       {/* Opponent bar - horizontal on mobile, hidden on sm+ (side panels used instead) */}

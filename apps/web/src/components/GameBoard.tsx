@@ -32,7 +32,8 @@ export function GameBoard() {
   const trickNum = gameState?.trickNumber ?? 0;
 
   useEffect(() => {
-    if (!isAiTurn || showTrickResult || showReceivedCards || showDealerKupa || showDealerReturns) return;
+    const pendingTrick = useGameStore.getState().pendingTrickState;
+    if (!isAiTurn || showTrickResult || showReceivedCards || showDealerKupa || showDealerReturns || pendingTrick) return;
 
     if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
 
@@ -40,7 +41,7 @@ export function GameBoard() {
       phase === 'CUTTER_PICK' ? 2200 :
       phase === 'DEALER_DISCARD' ? 1500 :
       phase === 'SETUP_DEAL' ? 600 :
-      phase === 'TRICK_PLAY' ? (2500 + Math.random() * 1500) :
+      phase === 'TRICK_PLAY' ? (2000 + Math.random() * 1000) :
       phase === 'EXCHANGE_GIVE' || phase === 'EXCHANGE_RETURN' ? 1500 : 800;
 
     aiTimerRef.current = setTimeout(() => {
@@ -57,7 +58,7 @@ export function GameBoard() {
     if (!hasAI) return;
     const interval = setInterval(() => {
       const s = useGameStore.getState();
-      if (!s.gameState || s.showTrickResult || s.showReceivedCards || s.showDealerKupa || s.showDealerReturns) return;
+      if (!s.gameState || s.showTrickResult || s.showReceivedCards || s.showDealerKupa || s.showDealerReturns || s.pendingTrickState) return;
       const seat = s.gameState.currentPlayerIndex;
       if (seat >= 0 && s.aiSeats.has(seat)) {
         s.runAiTurn();

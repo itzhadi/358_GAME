@@ -35,6 +35,7 @@ interface GameStore {
   showReceivedCards: boolean;
   showDealerKupa: boolean;
   showDealerReturns: boolean;
+  pendingTrickState: GameState | null;
 
   // Actions
   startLocalGame: (players: { id: string; name: string }[], victoryTarget: number, aiSeats?: number[]) => void;
@@ -70,6 +71,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   showReceivedCards: false,
   showDealerKupa: false,
   showDealerReturns: false,
+  pendingTrickState: null,
   roomCode: null,
   playerId: null,
   playerSeat: null,
@@ -301,11 +303,35 @@ export const useGameStore = create<GameStore>((set, get) => ({
         newState.tricksHistory.length > gameState.tricksHistory.length
       ) {
         const lastTrick = newState.tricksHistory[newState.tricksHistory.length - 1];
+        const playedCard = gameState.playerHands[action.payload.seatIndex].find(
+          (c) => c.id === action.payload.cardId,
+        );
+        // Show all 3 cards on the table for 1s before opening trick result
+        const displayState: GameState = {
+          ...gameState,
+          playerHands: newState.playerHands,
+          currentPlayerIndex: -1,
+          currentTrick: {
+            leaderIndex: gameState.currentTrick!.leaderIndex,
+            leadSuit: gameState.currentTrick!.leadSuit ?? playedCard!.suit,
+            cardsPlayed: [
+              ...gameState.currentTrick!.cardsPlayed,
+              { seatIndex: action.payload.seatIndex, card: playedCard! },
+            ],
+          },
+        };
         set({
-          gameState: newState,
-          showTrickResult: true,
+          gameState: displayState,
           lastTrickWinner: lastTrick.winnerIndex,
+          pendingTrickState: newState,
         });
+        setTimeout(() => {
+          set({
+            gameState: newState,
+            showTrickResult: true,
+            pendingTrickState: null,
+          });
+        }, 1000);
         return;
       }
 
@@ -545,7 +571,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (get().mode === 'online') {
       get().leaveRoom();
     }
-    set({ gameState: null, activePlayerSeat: 0, showPrivacyScreen: false, showTrickResult: false, showReceivedCards: false, showDealerKupa: false, showDealerReturns: false, mode: 'local', aiSeats: new Set() });
+    set({ gameState: null, activePlayerSeat: 0, showPrivacyScreen: false, showTrickResult: false, showReceivedCards: false, showDealerKupa: false, showDealerReturns: false, pendingTrickState: null, mode: 'local', aiSeats: new Set() });
   },
 
   getLegalCardsForCurrentPlayer: () => {
