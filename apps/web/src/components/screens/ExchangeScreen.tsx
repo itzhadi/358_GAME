@@ -36,14 +36,13 @@ export function ExchangeScreen() {
   if (isAiTurn || (isOnline && !isMyTurn)) {
     return (
       <div className="flex flex-col flex-1 min-h-0">
-        <div className="flex-1 flex flex-col items-center justify-center p-4 text-center">
+        <div className="flex-1 flex flex-col items-center p-4 text-center overflow-y-auto">
           <div className="text-5xl mb-4 animate-float">🔄</div>
           <h2 className="text-xl font-bold mb-2">
             {isAiTurn && '🤖 '}{currentPlayer.name} {isGiving ? 'נותן קלפים' : 'מחזיר קלפים'}...
           </h2>
           <p className="text-muted-foreground text-sm animate-pulse mb-4">ממתין...</p>
 
-          {/* Show cards I already gave */}
           {exchangeInfo.givenCards.filter(g => g.fromSeat === humanSeat).length > 0 && (
             <div className="glass rounded-2xl p-4 w-full max-w-sm mb-3 border border-blue-500/20">
               <p className="text-sm font-bold text-blue-400 mb-2">📤 קלפים שנתת:</p>
@@ -58,7 +57,6 @@ export function ExchangeScreen() {
             </div>
           )}
 
-          {/* Show cards returned to me so far */}
           {cardsReturnedToMe.length > 0 && (
             <div className="glass rounded-2xl p-4 w-full max-w-sm border border-green-500/20">
               <p className="text-sm font-bold text-green-400 mb-2">🎁 קלפים שהוחזרו לך:</p>
@@ -74,8 +72,7 @@ export function ExchangeScreen() {
           )}
         </div>
 
-        {/* Show own hand at bottom */}
-        <div className="glass-strong pb-4 pt-2">
+        <div className="glass-strong pb-4 pt-2 shrink-0">
           <div className="text-center text-xs text-muted-foreground mb-1">הקלפים שלך</div>
           <PlayerHand cards={playerHands[humanSeat]} />
         </div>

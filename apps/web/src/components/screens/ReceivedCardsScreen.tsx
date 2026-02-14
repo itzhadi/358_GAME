@@ -24,7 +24,7 @@ export function ReceivedCardsScreen() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center flex-1 p-4 text-center animate-scale-in relative">
+    <div className="flex flex-col items-center flex-1 p-4 pb-24 text-center animate-scale-in relative overflow-y-auto">
       <div className="absolute top-[10%] left-[10%] w-[200px] h-[200px] rounded-full bg-green-500/10 blur-[100px] pointer-events-none" />
 
       <div className="text-5xl mb-3 animate-float">🎁</div>
