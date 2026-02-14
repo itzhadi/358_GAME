@@ -97,6 +97,16 @@ export function ExchangeScreen() {
   let totalMyReturns = 0;
   let doneMyReturns = 0;
 
+  type ExchangePair = {
+    received: typeof hand[0];
+    returned: typeof hand[0] | null;
+    fromSeat: number;
+    done: boolean;
+  };
+  const exchangePairs: ExchangePair[] = [];
+  let currentReceivedCard: typeof hand[0] | null = null;
+  let currentReturnCardObj: typeof hand[0] | null = null;
+
   if (isReturning) {
     const givings = exchangeInfo.givings;
     const returnedCards = exchangeInfo.returnedCards;
@@ -107,12 +117,18 @@ export function ExchangeScreen() {
         const givenForDir = givenCards.filter(
           (g) => g.fromSeat === giving.fromSeat && g.toSeat === currentSeat,
         );
-        for (const g of givenForDir) {
-          receivedCardsList.push({ fromSeat: g.fromSeat, card: g.card });
-        }
         const returnedForDir = returnedCards.filter(
           (r) => r.fromSeat === currentSeat && r.toSeat === giving.fromSeat,
         );
+        for (let i = 0; i < givenForDir.length; i++) {
+          receivedCardsList.push({ fromSeat: givenForDir[i].fromSeat, card: givenForDir[i].card });
+          exchangePairs.push({
+            received: givenForDir[i].card,
+            returned: i < returnedForDir.length ? returnedForDir[i].card : null,
+            fromSeat: giving.fromSeat,
+            done: i < returnedForDir.length,
+          });
+        }
         totalMyReturns += givenForDir.length;
         doneMyReturns += returnedForDir.length;
       }
@@ -133,6 +149,8 @@ export function ExchangeScreen() {
             const required = getRequiredReturnCard(hand, receivedCard);
             autoReturnCard = required.id;
             autoReturnIsReceived = required.id === receivedCard.id;
+            currentReceivedCard = receivedCard;
+            currentReturnCardObj = hand.find((c) => c.id === required.id) || null;
           }
           break;
         }
@@ -206,37 +224,58 @@ export function ExchangeScreen() {
         </p>
       </div>
 
-      {/* Show received cards */}
-      {isReturning && isMyTurn && receivedCardsList.length > 0 && (
-        <div className="mx-4 mt-3">
-          <div className="glass rounded-2xl p-4 text-center border border-green-500/20">
-            <p className="text-sm font-bold text-green-400 mb-3">
-              🎁 הקלפים שקיבלת:
-            </p>
-            <div className="flex justify-center gap-2 flex-wrap">
-              {receivedCardsList.map((r) => (
-                <div key={r.card.id} className="text-center">
-                  <p className="text-[10px] text-muted-foreground mb-1">מ{players[r.fromSeat].name}</p>
-                  <PlayingCard card={r.card} highlight />
-                </div>
-              ))}
+      {/* Exchange pairs: received ← → returned */}
+      {isReturning && isMyTurn && exchangePairs.length > 0 && (
+        <div className="mx-3 mt-3 flex-1 overflow-y-auto pb-2">
+          {/* Already completed pairs */}
+          {exchangePairs.filter((p) => p.done).length > 0 && (
+            <div className="glass rounded-2xl p-3 mb-2 border border-white/5">
+              <p className="text-[10px] font-bold text-muted-foreground mb-2 text-center">✅ הוחזרו</p>
+              <div className="space-y-1.5">
+                {exchangePairs.filter((p) => p.done).map((pair, idx) => (
+                  <div key={idx} className="flex items-center justify-center gap-2">
+                    <div className="text-center">
+                      <p className="text-[9px] text-green-400/70 mb-0.5">קיבלת</p>
+                      <PlayingCard card={pair.received} small />
+                    </div>
+                    <span className="text-muted-foreground text-lg">→</span>
+                    <div className="text-center">
+                      <p className="text-[9px] text-rose-400/70 mb-0.5">החזרת</p>
+                      <PlayingCard card={pair.returned!} small />
+                    </div>
+                    <span className="text-[10px] text-slate-500 mr-1">ל{players[pair.fromSeat].name}</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          )}
 
-      {isReturning && autoReturnCard && (
-        <div className="mx-4 mt-3">
-          <div className="glass rounded-2xl p-4 text-center border border-amber-500/20">
-            <p className="text-sm font-bold text-amber-400 mb-2">
-              {autoReturnIsReceived
-                ? '↩️ אין קלף גבוה יותר בצבע — מחזיר את הקלף שקיבלת'
-                : '⚠️ חובה להחזיר את הקלף הגבוה ביותר בצבע'}
-            </p>
-            <Button size="sm" variant="accent" onClick={handleAutoReturn} disabled={!isMyTurn} className="rounded-xl">
-              החזר קלף ({doneMyReturns + 1}/{totalMyReturns}) ✨
-            </Button>
-          </div>
+          {/* Current pair */}
+          {currentReceivedCard && currentReturnCardObj && (
+            <div className="glass rounded-2xl p-4 border border-amber-500/20">
+              <p className="text-[10px] font-bold text-amber-400 mb-2 text-center">
+                {autoReturnIsReceived
+                  ? '↩️ אין קלף גבוה יותר — מחזיר את הקלף שקיבלת'
+                  : '⚠️ חובה להחזיר את הגבוה ביותר בצבע'}
+              </p>
+              <div className="flex items-center justify-center gap-3 mb-3">
+                <div className="text-center">
+                  <p className="text-[9px] text-green-400 mb-0.5">קיבלת</p>
+                  <PlayingCard card={currentReceivedCard} highlight />
+                </div>
+                <span className="text-amber-400 text-2xl animate-pulse">→</span>
+                <div className="text-center">
+                  <p className="text-[9px] text-rose-400 mb-0.5">מחזיר</p>
+                  <div className="ring-2 ring-amber-500/50 rounded-lg">
+                    <PlayingCard card={currentReturnCardObj} />
+                  </div>
+                </div>
+              </div>
+              <Button size="sm" variant="accent" onClick={handleAutoReturn} disabled={!isMyTurn} className="w-full rounded-xl">
+                החזר ({doneMyReturns + 1}/{totalMyReturns}) ✨
+              </Button>
+            </div>
+          )}
         </div>
       )}
 

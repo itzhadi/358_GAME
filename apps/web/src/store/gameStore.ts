@@ -312,7 +312,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const { aiSeats } = get();
       const hasAI = aiSeats.size > 0;
 
-      // Show received cards when exchange return completes → phase moves to CUTTER_PICK
+      // Show exchange summary when exchange return completes → phase moves to CUTTER_PICK
       // Skip for dealer — their cards are handled via DealerReturnsScreen
       if (
         action.type === 'EXCHANGE_RETURN_CARD' &&
@@ -322,12 +322,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
         const humanSeat = hasAI ? 0 : get().activePlayerSeat;
         const isDealer = humanSeat === newState.dealerIndex;
 
-        // Skip for dealer — they see their cards after cutter pick via DealerReturnsScreen
         if (!isDealer) {
           const returnedToHuman = newState.exchangeInfo.returnedCards.filter(
             (r) => r.toSeat === humanSeat,
           );
-          if (returnedToHuman.length > 0) {
+          const returnedByHuman = newState.exchangeInfo.returnedCards.filter(
+            (r) => r.fromSeat === humanSeat,
+          );
+          if (returnedToHuman.length > 0 || returnedByHuman.length > 0) {
             set({
               gameState: newState,
               showReceivedCards: true,
