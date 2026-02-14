@@ -92,14 +92,16 @@ export function ExchangeScreen() {
   }
 
   let autoReturnCard: string | null = null;
+  let autoReturnIsReceived = false;
   const receivedCardsList: { fromSeat: number; card: typeof hand[0] }[] = [];
+  let totalMyReturns = 0;
+  let doneMyReturns = 0;
 
   if (isReturning) {
     const givings = exchangeInfo.givings;
     const returnedCards = exchangeInfo.returnedCards;
     const givenCards = exchangeInfo.givenCards;
 
-    // Collect all cards given TO the current player (these are the cards they received)
     for (const giving of givings) {
       if (giving.toSeat === currentSeat) {
         const givenForDir = givenCards.filter(
@@ -108,7 +110,20 @@ export function ExchangeScreen() {
         for (const g of givenForDir) {
           receivedCardsList.push({ fromSeat: g.fromSeat, card: g.card });
         }
+        const returnedForDir = returnedCards.filter(
+          (r) => r.fromSeat === currentSeat && r.toSeat === giving.fromSeat,
+        );
+        totalMyReturns += givenForDir.length;
+        doneMyReturns += returnedForDir.length;
+      }
+    }
 
+    // Calculate autoReturnCard matching engine order (first pending direction)
+    for (const giving of givings) {
+      if (giving.toSeat === currentSeat) {
+        const givenForDir = givenCards.filter(
+          (g) => g.fromSeat === giving.fromSeat && g.toSeat === currentSeat,
+        );
         const returnedForDir = returnedCards.filter(
           (r) => r.fromSeat === currentSeat && r.toSeat === giving.fromSeat,
         );
@@ -116,10 +131,10 @@ export function ExchangeScreen() {
           const receivedCard = givenForDir[returnedForDir.length]?.card;
           if (receivedCard) {
             const required = getRequiredReturnCard(hand, receivedCard);
-            if (required.id !== receivedCard.id) {
-              autoReturnCard = required.id;
-            }
+            autoReturnCard = required.id;
+            autoReturnIsReceived = required.id === receivedCard.id;
           }
+          break;
         }
       }
     }
@@ -184,7 +199,7 @@ export function ExchangeScreen() {
           {isGiving
             ? <><span className="text-purple-400 font-bold">{currentPlayer.name}</span>: בחר {cardsToGive} קלפים לתת ל{partnerName}</>
             : autoReturnCard
-              ? <><span className="text-amber-400 font-bold">חובה</span> להחזיר את הגבוה ביותר בצבע</>
+              ? <><span className="text-amber-400 font-bold">החזרה {doneMyReturns + 1}/{totalMyReturns}</span> — לחץ על הכפתור להחזרה</>
               : <><span className="text-purple-400 font-bold">{currentPlayer.name}</span>: בחר קלף להחזיר ל{partnerName}</>
           }
           {!isMyTurn && <span className="block text-xs mt-1 text-muted-foreground">(ממתין ל{currentPlayer.name}...)</span>}
@@ -214,10 +229,12 @@ export function ExchangeScreen() {
         <div className="mx-4 mt-3">
           <div className="glass rounded-2xl p-4 text-center border border-amber-500/20">
             <p className="text-sm font-bold text-amber-400 mb-2">
-              ⚠️ חובה להחזיר קלף חזק
+              {autoReturnIsReceived
+                ? '↩️ אין קלף גבוה יותר בצבע — מחזיר את הקלף שקיבלת'
+                : '⚠️ חובה להחזיר את הקלף הגבוה ביותר בצבע'}
             </p>
             <Button size="sm" variant="accent" onClick={handleAutoReturn} disabled={!isMyTurn} className="rounded-xl">
-              החזר קלף חובה ✨
+              החזר קלף ({doneMyReturns + 1}/{totalMyReturns}) ✨
             </Button>
           </div>
         </div>
