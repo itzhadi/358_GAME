@@ -131,10 +131,10 @@ const slides: Slide[] = [
     ),
   },
 
-  // 3 — Cutter (Trump)
+  // 3 — Cutter
   {
     icon: '✂️',
-    title: 'מה זה חותך (Trump)?',
+    title: 'מה זה חותך?',
     content: (
       <div className="space-y-4">
         <p className="text-sm text-muted-foreground">
