@@ -33,9 +33,6 @@ export default function HomePage() {
         </Button>
       </div>
 
-      <p className="text-xs text-muted-foreground/50 mt-10 relative z-10">
-        נוצר באהבה 🤍 על ידי איציק דיעי
-      </p>
     </div>
   );
 }
