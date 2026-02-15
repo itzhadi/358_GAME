@@ -30,6 +30,8 @@ export function PlayerHand({
   const sorted = sortHand(cards, cutterSuit);
   const legalCards = leadSuit !== undefined ? getLegalCards(cards, leadSuit ?? null) : cards;
   const legalIds = new Set(legalCards.map((c) => c.id));
+  // Only highlight legal cards when the hand is interactive (player can click)
+  const isInteractive = !!onCardClick && !disabled;
 
   return (
     <div className={cn('flex flex-wrap justify-center gap-1 px-2', small ? 'py-1' : 'py-2')}>
@@ -55,7 +57,7 @@ export function PlayerHand({
               }
               disabled={isDisabled || atMax}
               selected={isSelected}
-              highlight={(isLegal && !isSelected && !disabled) || (highlightCards?.has(card.id) ?? false)}
+              highlight={(isInteractive && isLegal && !isSelected && !isDisabled) || (highlightCards?.has(card.id) ?? false)}
             />
           </div>
         );

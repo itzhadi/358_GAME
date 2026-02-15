@@ -57,10 +57,11 @@ export function PlayingCard({
 
   return (
     <button
+      type="button"
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        'rounded-xl flex flex-col items-center justify-between relative overflow-hidden transition-all duration-200',
+        'rounded-xl flex flex-col items-center justify-between relative overflow-hidden transition-all duration-200 outline-none focus-visible:ring-2 focus-visible:ring-purple-400',
         small ? 'w-10 h-14 sm:w-14 sm:h-[78px] p-0.5' : 'w-[52px] h-[74px] sm:w-[76px] sm:h-[110px] md:w-[86px] md:h-[124px] p-1 sm:p-1.5',
         'bg-gradient-to-br from-white to-gray-100 shadow-xl',
         {
