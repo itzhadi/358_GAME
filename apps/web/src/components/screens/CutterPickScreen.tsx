@@ -39,6 +39,7 @@ export function CutterPickScreen() {
     return () => {
       clearTimeout(revealTimer);
       clearTimeout(dispatchTimer);
+      didReveal.current = false;
     };
   }, [isAiDealer, dealerSeat, gameState, dispatch]);
 

@@ -30,7 +30,11 @@ export function ExchangeScreen() {
   // Collect cards given TO me (cards I received from others)
   const cardsGivenToMe = exchangeInfo.givenCards.filter(g => g.toSeat === humanSeat);
   // Collect cards returned TO me (cards returned by others after I gave)
-  const cardsReturnedToMe = exchangeInfo.returnedCards.filter(r => r.toSeat === humanSeat);
+  // Hide returns from the dealer until after cutter pick (they should be revealed only after choosing cutter)
+  const isDealerBeforeCutter = humanSeat === gameState.dealerIndex && !gameState.cutterSuit;
+  const cardsReturnedToMe = isDealerBeforeCutter
+    ? []
+    : exchangeInfo.returnedCards.filter(r => r.toSeat === humanSeat);
 
   // AI or online other player's turn - show waiting with relevant exchange info
   if (isAiTurn || (isOnline && !isMyTurn)) {
