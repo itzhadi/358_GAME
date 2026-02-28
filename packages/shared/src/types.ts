@@ -29,6 +29,7 @@ export type GameMode = 'local' | 'online';
 /** Game phase */
 export type GamePhase =
   | 'SETUP_DEAL'
+  | 'RESHUFFLE_WINDOW'
   | 'EXCHANGE_GIVE'
   | 'EXCHANGE_RETURN'
   | 'CUTTER_PICK'
@@ -150,6 +151,12 @@ export interface GameState {
 
   // --- Hand history for export ---
   handHistory: HandRecord[];
+
+  // --- Reshuffle (per hand) ---
+  reshuffleUsedBy8: boolean;
+  reshuffleUsedBy35: boolean;
+  reshuffleWindowFor8: boolean;
+  reshuffleWindowFor35: boolean;
 }
 
 /** Record of a completed hand for history/export */
@@ -170,6 +177,8 @@ export interface HandRecord {
 export type GameAction =
   | { type: 'CREATE_GAME'; payload: CreateGamePayload }
   | { type: 'SHUFFLE_DEAL' }
+  | { type: 'RESHUFFLE_ACCEPT'; payload: { side: '8' | '35' } }
+  | { type: 'RESHUFFLE_DECLINE'; payload: { side: '8' | '35' } }
   | { type: 'EXCHANGE_GIVE_CARD'; payload: { fromSeat: number; cardId: string } }
   | { type: 'EXCHANGE_RETURN_CARD'; payload: { fromSeat: number; cardId: string } }
   | { type: 'PICK_CUTTER'; payload: { suit: Suit } }

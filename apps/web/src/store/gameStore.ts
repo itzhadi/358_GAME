@@ -4,6 +4,7 @@ import {
   CreateGamePayload, getLegalCards, getRequiredReturnCard,
   aiSelectDiscard, aiPlayCard,
   aiExchangeGive, aiExchangeReturn,
+  aiShouldReshuffle, getReshuffleSide,
 } from '@358/shared';
 import { createGame, gameReducer } from '@358/shared';
 import { socket } from '@/lib/socket';
@@ -36,6 +37,9 @@ interface GameStore {
   showDealerKupa: boolean;
   showDealerReturns: boolean;
   pendingTrickState: GameState | null;
+  reshuffleNotification: string | null;
+  reshuffleVoteStatus: { votedSeat: number; vote: 'accept' | 'decline' } | null;
+  myReshuffleVote: 'accept' | 'decline' | null;
 
   // Actions
   startLocalGame: (players: { id: string; name: string }[], victoryTarget: number, aiSeats?: number[]) => void;
@@ -60,6 +64,17 @@ interface GameStore {
   isCurrentPlayerAI: () => boolean;
 }
 
+let reshuffleNotifTimer: ReturnType<typeof setTimeout> | null = null;
+
+function showReshuffleNotif(setFn: typeof set, msg: string, duration: number) {
+  if (reshuffleNotifTimer) clearTimeout(reshuffleNotifTimer);
+  setFn({ reshuffleNotification: msg });
+  reshuffleNotifTimer = setTimeout(() => {
+    setFn({ reshuffleNotification: null });
+    reshuffleNotifTimer = null;
+  }, duration);
+}
+
 export const useGameStore = create<GameStore>((set, get) => ({
   gameState: null,
   mode: 'local',
@@ -72,6 +87,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
   showDealerKupa: false,
   showDealerReturns: false,
   pendingTrickState: null,
+  reshuffleNotification: null,
+  reshuffleVoteStatus: null,
+  myReshuffleVote: null,
   roomCode: null,
   playerId: null,
   playerSeat: null,
@@ -112,6 +130,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     socket.off('room:playerReconnected');
     socket.off('game:privateHand');
     socket.off('error');
+    socket.off('reshuffle:voteStatus');
 
     socket.on('connect', () => {
       set({ isConnected: true });
@@ -201,7 +220,44 @@ export const useGameStore = create<GameStore>((set, get) => ({
         return;
       }
 
-      set({ gameState: newState });
+      // Trick just completed — show all 3 cards briefly before moving on
+      if (
+        prevState?.phase === 'TRICK_PLAY' &&
+        prevState.currentTrick &&
+        prevState.currentTrick.cardsPlayed.length === 2 &&
+        newState.tricksHistory.length > prevState.tricksHistory.length
+      ) {
+        const completedTrick = newState.tricksHistory[newState.tricksHistory.length - 1];
+        const displayState: GameState = {
+          ...prevState,
+          playerHands: newState.playerHands,
+          currentPlayerIndex: -1,
+          currentTrick: {
+            leaderIndex: completedTrick.cardsPlayed[0].seatIndex,
+            leadSuit: completedTrick.leadSuit,
+            cardsPlayed: completedTrick.cardsPlayed,
+          },
+        };
+        set({
+          gameState: displayState,
+          lastTrickWinner: completedTrick.winnerIndex,
+          pendingTrickState: newState,
+        });
+        setTimeout(() => {
+          set({
+            gameState: newState,
+            showTrickResult: true,
+            pendingTrickState: null,
+          });
+        }, 1200);
+        return;
+      }
+
+      set({ gameState: newState, reshuffleVoteStatus: null, myReshuffleVote: null });
+    });
+
+    socket.on('reshuffle:voteStatus', (status: { votedSeat: number; vote: 'accept' | 'decline' } | null) => {
+      set({ reshuffleVoteStatus: status });
     });
 
     socket.on('error', ({ code, message }: { code: string; message: string }) => {
@@ -305,11 +361,48 @@ export const useGameStore = create<GameStore>((set, get) => ({
         case 'SHUFFLE_DEAL':
           socket.emit('game:deal', { token });
           break;
+        case 'RESHUFFLE_ACCEPT':
+          socket.emit('reshuffle:accept', { token, side: action.payload.side });
+          if (action.payload.side === '35') set({ myReshuffleVote: 'accept' });
+          break;
+        case 'RESHUFFLE_DECLINE':
+          socket.emit('reshuffle:decline', { token, side: action.payload.side });
+          if (action.payload.side === '35') set({ myReshuffleVote: 'decline' });
+          break;
       }
       return;
     }
 
     try {
+      const { aiSeats: aiSeatsEarly } = get();
+      if (
+        action.type === 'RESHUFFLE_ACCEPT' &&
+        action.payload.side === '35' &&
+        aiSeatsEarly.size > 0
+      ) {
+        const humanSeat = 0;
+        const humanSide = getReshuffleSide(humanSeat, gameState.dealerIndex);
+        if (humanSide === '35') {
+          const nonDealers = [0, 1, 2].filter(s => s !== gameState.dealerIndex);
+          const partnerSeat = nonDealers.find(s => s !== humanSeat);
+          if (partnerSeat !== undefined && aiSeatsEarly.has(partnerSeat)) {
+            const partnerWants = aiShouldReshuffle(
+              gameState.playerHands[partnerSeat],
+              gameState.targets[partnerSeat],
+            );
+            if (!partnerWants) {
+              const pName = gameState.players[partnerSeat].name;
+              const pTarget = gameState.targets[partnerSeat];
+              const declineState = gameReducer(gameState, { type: 'RESHUFFLE_DECLINE', payload: { side: '35' } });
+              const msg = `${pName} (${pTarget}) לא מסכים — ממשיכים לשחק`;
+              set({ gameState: declineState, activePlayerSeat: 0, reshuffleNotification: msg });
+              showReshuffleNotif(set, msg, 2500);
+              return;
+            }
+          }
+        }
+      }
+
       const newState = gameReducer(gameState, action);
 
       if (
@@ -438,6 +531,41 @@ export const useGameStore = create<GameStore>((set, get) => ({
         }
       }
 
+      if ((action.type === 'RESHUFFLE_ACCEPT' || action.type === 'RESHUFFLE_DECLINE') && hasAI) {
+        const side = action.payload.side;
+        const isAccept = action.type === 'RESHUFFLE_ACCEPT';
+        const humanSeat = 0;
+        const humanSide = getReshuffleSide(humanSeat, gameState.dealerIndex);
+        let msg: string | null = null;
+        let duration = 2500;
+
+        if (isAccept) {
+          if (side === humanSide && side === '35') {
+            const nonDealers = [0, 1, 2].filter(s => s !== gameState.dealerIndex);
+            const partner = nonDealers.find(s => s !== humanSeat);
+            if (partner !== undefined) {
+              const pTarget = gameState.targets[partner];
+              msg = `שחקן ${pTarget} מסכים — הקלפים מחולקים מחדש!`;
+            }
+          } else if (side !== humanSide) {
+            const label = side === '8' ? '8' : '3+5';
+            msg = `צד ${label} ביקש חלוקה מחדש — הקלפים מחולקים מחדש!`;
+          }
+        } else {
+          if (side !== humanSide) {
+            const label = side === '8' ? '8' : '3+5';
+            msg = `צד ${label} ויתר על חלוקה מחדש`;
+            duration = 2000;
+          }
+        }
+
+        if (msg) {
+          set({ gameState: newState, activePlayerSeat: 0, reshuffleNotification: msg });
+          showReshuffleNotif(set, msg, duration);
+          return;
+        }
+      }
+
       // For local mode without AI: show privacy screen between turns
       if (!hasAI && action.type === 'PLAY_CARD' && newState.phase === 'TRICK_PLAY' && newState.mode === 'local') {
         const sameTrick = newState.currentTrick && newState.currentTrick.cardsPlayed.length > 0;
@@ -465,13 +593,42 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!gameState || aiSeats.size === 0 || showTrickResult || showReceivedCards || showDealerKupa || showDealerReturns) return;
 
     const seat = gameState.currentPlayerIndex;
+
+    if (gameState.phase === 'RESHUFFLE_WINDOW') {
+      const side8Eligible = !gameState.reshuffleUsedBy8 && gameState.reshuffleWindowFor8;
+      const side35Eligible = !gameState.reshuffleUsedBy35 && gameState.reshuffleWindowFor35;
+
+      if (side8Eligible && aiSeats.has(gameState.dealerIndex)) {
+        const dealerHand = gameState.playerHands[gameState.dealerIndex];
+        const wants = aiShouldReshuffle(dealerHand, 8);
+        get().dispatch({
+          type: wants ? 'RESHUFFLE_ACCEPT' : 'RESHUFFLE_DECLINE',
+          payload: { side: '8' },
+        });
+        return;
+      }
+      if (side35Eligible) {
+        const nonDealerSeats = [0, 1, 2].filter((s) => s !== gameState.dealerIndex);
+        const aiNonDealers = nonDealerSeats.filter((s) => aiSeats.has(s));
+        if (aiNonDealers.length === nonDealerSeats.length) {
+          const bothWant = aiNonDealers.every((s) =>
+            aiShouldReshuffle(gameState.playerHands[s], gameState.targets[s]),
+          );
+          get().dispatch({
+            type: bothWant ? 'RESHUFFLE_ACCEPT' : 'RESHUFFLE_DECLINE',
+            payload: { side: '35' },
+          });
+        }
+      }
+      return;
+    }
+
     if (seat < 0 || !aiSeats.has(seat)) return;
 
     const hand = gameState.playerHands[seat];
 
     switch (gameState.phase) {
       case 'SETUP_DEAL': {
-        // Human always clicks "Deal Cards" – never auto-deal
         break;
       }
 
@@ -585,7 +742,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (get().mode === 'online') {
       get().leaveRoom();
     }
-    set({ gameState: null, activePlayerSeat: 0, showPrivacyScreen: false, showTrickResult: false, showReceivedCards: false, showDealerKupa: false, showDealerReturns: false, pendingTrickState: null, mode: 'local', aiSeats: new Set() });
+    if (reshuffleNotifTimer) { clearTimeout(reshuffleNotifTimer); reshuffleNotifTimer = null; }
+    set({ gameState: null, activePlayerSeat: 0, showPrivacyScreen: false, showTrickResult: false, showReceivedCards: false, showDealerKupa: false, showDealerReturns: false, pendingTrickState: null, reshuffleNotification: null, reshuffleVoteStatus: null, myReshuffleVote: null, mode: 'local', aiSeats: new Set() });
   },
 
   getLegalCardsForCurrentPlayer: () => {

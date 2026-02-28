@@ -58,6 +58,10 @@ export function createGame(payload: CreateGamePayload): GameState {
     winnerIndex: null,
     winnerReason: null,
     handHistory: [],
+    reshuffleUsedBy8: false,
+    reshuffleUsedBy35: false,
+    reshuffleWindowFor8: false,
+    reshuffleWindowFor35: false,
   };
 }
 
@@ -71,6 +75,12 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case 'SHUFFLE_DEAL':
       return handleShuffleDeal(state);
+
+    case 'RESHUFFLE_ACCEPT':
+      return handleReshuffleAccept(state, action.payload.side);
+
+    case 'RESHUFFLE_DECLINE':
+      return handleReshuffleDecline(state, action.payload.side);
 
     case 'EXCHANGE_GIVE_CARD':
       return handleExchangeGive(state, action.payload.fromSeat, action.payload.cardId);
@@ -99,6 +109,33 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 // Action Handlers
 // ============================================================
 
+function computePostDealPhase(
+  handNumber: number,
+  dealerIndex: number,
+  lastHandDelta: number[],
+  targets: number[],
+): { phase: GamePhase; exchangeInfo: ExchangeInfo | null; currentPlayerIndex: number } {
+  const needsExchange = handNumber > 1;
+
+  if (needsExchange) {
+    const givings = calculateExchangeGivings(lastHandDelta, targets);
+    if (givings.length > 0) {
+      return {
+        phase: 'EXCHANGE_GIVE',
+        exchangeInfo: {
+          givings,
+          givenCards: [],
+          returnedCards: [],
+          currentGiverIdx: 0,
+          subPhase: 'giving',
+        },
+        currentPlayerIndex: givings[0].fromSeat,
+      };
+    }
+  }
+  return { phase: 'CUTTER_PICK', exchangeInfo: null, currentPlayerIndex: dealerIndex };
+}
+
 function handleShuffleDeal(state: GameState): GameState {
   if (state.phase !== 'SETUP_DEAL') {
     throw new Error(`Cannot deal in phase ${state.phase}`);
@@ -109,37 +146,6 @@ function handleShuffleDeal(state: GameState): GameState {
 
   const targets = getTargetsForHand(state.dealerIndex);
   const handNumber = state.handNumber + 1;
-
-  // Determine if exchange is needed (hand 2+)
-  const needsExchange = handNumber > 1;
-
-  let phase: GamePhase;
-  let exchangeInfo: ExchangeInfo | null = null;
-  let currentPlayerIndex: number;
-
-  if (needsExchange) {
-    // Calculate exchange givings based on last hand deltas
-    const givings = calculateExchangeGivings(state.lastHandDelta, targets);
-    if (givings.length > 0) {
-      exchangeInfo = {
-        givings,
-        givenCards: [],
-        returnedCards: [],
-        currentGiverIdx: 0,
-        subPhase: 'giving',
-      };
-      phase = 'EXCHANGE_GIVE';
-      currentPlayerIndex = givings[0].fromSeat;
-    } else {
-      // All zeros, skip to cutter
-      phase = 'CUTTER_PICK';
-      currentPlayerIndex = state.dealerIndex;
-    }
-  } else {
-    // First hand: go straight to cutter pick
-    phase = 'CUTTER_PICK';
-    currentPlayerIndex = state.dealerIndex;
-  }
 
   return {
     ...state,
@@ -152,14 +158,119 @@ function handleShuffleDeal(state: GameState): GameState {
     dealerHiddenReturns: [],
     dealerPendingReceived: [],
     cutterSuit: null,
-    exchangeInfo,
+    exchangeInfo: null,
     currentTrick: null,
     trickNumber: 0,
     tricksHistory: [],
     tricksTakenCount: [0, 0, 0],
     targets,
-    phase,
-    currentPlayerIndex,
+    phase: 'RESHUFFLE_WINDOW',
+    currentPlayerIndex: state.dealerIndex,
+    reshuffleUsedBy8: false,
+    reshuffleUsedBy35: false,
+    reshuffleWindowFor8: true,
+    reshuffleWindowFor35: true,
+  };
+}
+
+function handleReshuffleAccept(state: GameState, side: '8' | '35'): GameState {
+  if (state.phase !== 'RESHUFFLE_WINDOW') {
+    throw new Error(`Cannot reshuffle in phase ${state.phase}`);
+  }
+
+  const canAct = side === '8'
+    ? (!state.reshuffleUsedBy8 && state.reshuffleWindowFor8)
+    : (!state.reshuffleUsedBy35 && state.reshuffleWindowFor35);
+
+  if (!canAct) {
+    throw new Error(`Side ${side} is not eligible for reshuffle`);
+  }
+
+  const deck = shuffleDeck(createDeck());
+  const { hands, kupa } = dealCards(deck);
+
+  const newUsedBy8 = side === '8' ? true : state.reshuffleUsedBy8;
+  const newUsedBy35 = side === '35' ? true : state.reshuffleUsedBy35;
+
+  const otherCanRespond = side === '8' ? !newUsedBy35 : !newUsedBy8;
+
+  if (otherCanRespond) {
+    return {
+      ...state,
+      deck,
+      kupa,
+      playerHands: hands,
+      dealerDiscarded: [],
+      dealerReceivedKupa: [],
+      dealerHiddenReturns: [],
+      dealerPendingReceived: [],
+      cutterSuit: null,
+      exchangeInfo: null,
+      currentTrick: null,
+      phase: 'RESHUFFLE_WINDOW',
+      currentPlayerIndex: state.dealerIndex,
+      reshuffleUsedBy8: newUsedBy8,
+      reshuffleUsedBy35: newUsedBy35,
+      reshuffleWindowFor8: side === '8' ? false : true,
+      reshuffleWindowFor35: side === '35' ? false : true,
+    };
+  }
+
+  const postDeal = computePostDealPhase(
+    state.handNumber, state.dealerIndex, state.lastHandDelta, state.targets,
+  );
+
+  return {
+    ...state,
+    deck,
+    kupa,
+    playerHands: hands,
+    dealerDiscarded: [],
+    dealerReceivedKupa: [],
+    dealerHiddenReturns: [],
+    dealerPendingReceived: [],
+    cutterSuit: null,
+    exchangeInfo: postDeal.exchangeInfo,
+    currentTrick: null,
+    phase: postDeal.phase,
+    currentPlayerIndex: postDeal.currentPlayerIndex,
+    reshuffleUsedBy8: newUsedBy8,
+    reshuffleUsedBy35: newUsedBy35,
+    reshuffleWindowFor8: false,
+    reshuffleWindowFor35: false,
+  };
+}
+
+function handleReshuffleDecline(state: GameState, side: '8' | '35'): GameState {
+  if (state.phase !== 'RESHUFFLE_WINDOW') {
+    throw new Error(`Cannot decline reshuffle in phase ${state.phase}`);
+  }
+
+  const newWindowFor8 = side === '8' ? false : state.reshuffleWindowFor8;
+  const newWindowFor35 = side === '35' ? false : state.reshuffleWindowFor35;
+
+  const still8 = !state.reshuffleUsedBy8 && newWindowFor8;
+  const still35 = !state.reshuffleUsedBy35 && newWindowFor35;
+
+  if (still8 || still35) {
+    return {
+      ...state,
+      reshuffleWindowFor8: newWindowFor8,
+      reshuffleWindowFor35: newWindowFor35,
+    };
+  }
+
+  const postDeal = computePostDealPhase(
+    state.handNumber, state.dealerIndex, state.lastHandDelta, state.targets,
+  );
+
+  return {
+    ...state,
+    reshuffleWindowFor8: false,
+    reshuffleWindowFor35: false,
+    exchangeInfo: postDeal.exchangeInfo,
+    phase: postDeal.phase,
+    currentPlayerIndex: postDeal.currentPlayerIndex,
   };
 }
 
@@ -697,6 +808,10 @@ function handleNextHand(state: GameState): GameState {
     dealerReceivedKupa: [],
     dealerHiddenReturns: [],
     dealerPendingReceived: [],
+    reshuffleUsedBy8: false,
+    reshuffleUsedBy35: false,
+    reshuffleWindowFor8: false,
+    reshuffleWindowFor35: false,
   };
 }
 

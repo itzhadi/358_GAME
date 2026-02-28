@@ -16,24 +16,38 @@ import { TrickHistory } from './TrickHistory';
 import { ReceivedCardsScreen } from './screens/ReceivedCardsScreen';
 import { DealerKupaScreen } from './screens/DealerKupaScreen';
 import { DealerReturnsScreen } from './screens/DealerReturnsScreen';
+import { ReshuffleScreen } from './screens/ReshuffleScreen';
 
 export function GameBoard() {
-  const { gameState, showPrivacyScreen, showTrickResult, showReceivedCards, showDealerKupa, showDealerReturns, aiSeats, runAiTurn } = useGameStore();
+  const { gameState, showPrivacyScreen, showTrickResult, showReceivedCards, showDealerKupa, showDealerReturns, aiSeats, runAiTurn, reshuffleNotification } = useGameStore();
   const aiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const hasAI = aiSeats.size > 0;
   const currentSeat = gameState?.currentPlayerIndex ?? -1;
-  const isAiTurn = hasAI && currentSeat >= 0 && aiSeats.has(currentSeat);
+  const isNormalAiTurn = hasAI && currentSeat >= 0 && aiSeats.has(currentSeat);
   const phase = gameState?.phase;
+
+  const isReshuffleAiNeeded = hasAI && phase === 'RESHUFFLE_WINDOW' && gameState != null && (() => {
+    const gs = gameState;
+    const side8Ai = !gs.reshuffleUsedBy8 && gs.reshuffleWindowFor8 && aiSeats.has(gs.dealerIndex);
+    const nonDealers = [0, 1, 2].filter(s => s !== gs.dealerIndex);
+    const side35Ai = !gs.reshuffleUsedBy35 && gs.reshuffleWindowFor35 && nonDealers.every(s => aiSeats.has(s));
+    return side8Ai || side35Ai;
+  })();
+
+  const isAiTurn = isNormalAiTurn || !!isReshuffleAiNeeded;
 
   const exchangeProgress =
     (gameState?.exchangeInfo?.givenCards.length ?? 0) +
     (gameState?.exchangeInfo?.returnedCards.length ?? 0);
   const trickNum = gameState?.trickNumber ?? 0;
+  const reshuffleW8 = gameState?.reshuffleWindowFor8;
+  const reshuffleW35 = gameState?.reshuffleWindowFor35;
 
   useEffect(() => {
     const pendingTrick = useGameStore.getState().pendingTrickState;
-    if (!isAiTurn || showTrickResult || showReceivedCards || showDealerKupa || showDealerReturns || pendingTrick) return;
+    const reshuffleNotif = useGameStore.getState().reshuffleNotification;
+    if (!isAiTurn || showTrickResult || showReceivedCards || showDealerKupa || showDealerReturns || pendingTrick || reshuffleNotif) return;
 
     if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
 
@@ -41,6 +55,7 @@ export function GameBoard() {
       phase === 'CUTTER_PICK' ? 2200 :
       phase === 'DEALER_DISCARD' ? 1500 :
       phase === 'SETUP_DEAL' ? 600 :
+      phase === 'RESHUFFLE_WINDOW' ? 1500 :
       phase === 'TRICK_PLAY' ? (2500 + Math.random() * 2000) :
       phase === 'EXCHANGE_GIVE' || phase === 'EXCHANGE_RETURN' ? 1500 : 800;
 
@@ -51,16 +66,18 @@ export function GameBoard() {
     return () => {
       if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
     };
-  }, [isAiTurn, phase, currentSeat, showTrickResult, showReceivedCards, showDealerKupa, showDealerReturns, runAiTurn, exchangeProgress, trickNum]);
+  }, [isAiTurn, phase, currentSeat, showTrickResult, showReceivedCards, showDealerKupa, showDealerReturns, runAiTurn, exchangeProgress, trickNum, reshuffleW8, reshuffleW35, reshuffleNotification]);
 
   // Heartbeat: retry AI if stuck (e.g. after a silent dispatch error)
   useEffect(() => {
     if (!hasAI) return;
     const interval = setInterval(() => {
       const s = useGameStore.getState();
-      if (!s.gameState || s.showTrickResult || s.showReceivedCards || s.showDealerKupa || s.showDealerReturns || s.pendingTrickState) return;
+      if (!s.gameState || s.showTrickResult || s.showReceivedCards || s.showDealerKupa || s.showDealerReturns || s.pendingTrickState || s.reshuffleNotification) return;
       const seat = s.gameState.currentPlayerIndex;
-      if (seat >= 0 && s.aiSeats.has(seat)) {
+      const normalAi = seat >= 0 && s.aiSeats.has(seat);
+      const reshuffleAi = s.gameState.phase === 'RESHUFFLE_WINDOW';
+      if (normalAi || reshuffleAi) {
         s.runAiTurn();
       }
     }, 8000);
@@ -121,6 +138,9 @@ export function GameBoard() {
       case 'SETUP_DEAL':
         screen = <DealScreen />;
         break;
+      case 'RESHUFFLE_WINDOW':
+        screen = <ReshuffleScreen />;
+        break;
       case 'EXCHANGE_GIVE':
       case 'EXCHANGE_RETURN':
         screen = <ExchangeScreen />;
@@ -161,6 +181,15 @@ export function GameBoard() {
       )}
       <div className="flex-1 flex flex-col min-h-0">{screen}</div>
       {showHistory && <TrickHistory gameState={gameState} aiSeats={aiSeats} />}
+
+      {reshuffleNotification && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 animate-in fade-in duration-300">
+          <div className="glass-strong rounded-2xl px-8 py-5 text-center max-w-sm mx-4 animate-scale-in shadow-2xl border border-amber-500/30">
+            <div className="text-3xl mb-2">🔄</div>
+            <p className="text-lg font-bold text-amber-400 leading-relaxed">{reshuffleNotification}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

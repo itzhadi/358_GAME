@@ -1,7 +1,7 @@
 import { Server as SocketIOServer, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import { roomManager } from './roomManager.js';
-import { GameAction, Suit } from '@358/shared';
+import { GameAction, Suit, getReshuffleSide } from '@358/shared';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-358';
 
@@ -25,6 +25,101 @@ function verifyToken(token: string): JWTPayload | null {
 
 const RECONNECT_GRACE_MS = 45_000;
 const disconnectTimers = new Map<string, NodeJS.Timeout>();
+const reshuffleVotes = new Map<string, Map<number, 'accept' | 'decline'>>();
+
+function getSide35Seats(roomCode: string): number[] {
+  const room = roomManager.getRoom(roomCode);
+  if (!room?.gameState) return [];
+  const dealer = room.gameState.dealerIndex;
+  return [0, 1, 2].filter((s) => getReshuffleSide(s, dealer) === '35');
+}
+
+function handleSide35Vote(
+  io: SocketIOServer,
+  token: string,
+  vote: 'accept' | 'decline',
+) {
+  const payload = verifyToken(token);
+  if (!payload) return;
+
+  const room = roomManager.getRoom(payload.roomCode);
+  if (!room?.gameState) return;
+
+  const seats35 = getSide35Seats(payload.roomCode);
+  if (!seats35.includes(payload.seatIndex)) return;
+
+  let votes = reshuffleVotes.get(payload.roomCode);
+  if (!votes) {
+    votes = new Map();
+    reshuffleVotes.set(payload.roomCode, votes);
+  }
+  votes.set(payload.seatIndex, vote);
+
+  if (vote === 'decline') {
+    reshuffleVotes.delete(payload.roomCode);
+    broadcastSide35VoteStatus(io, payload.roomCode, null);
+    applyAndBroadcast(io, payload.roomCode, {
+      type: 'RESHUFFLE_DECLINE',
+      payload: { side: '35' },
+    });
+    return;
+  }
+
+  const otherSeat = seats35.find((s) => s !== payload.seatIndex)!;
+  const otherVote = votes.get(otherSeat);
+
+  if (otherVote === undefined) {
+    broadcastSide35VoteStatus(io, payload.roomCode, {
+      votedSeat: payload.seatIndex,
+      vote: 'accept',
+    });
+    return;
+  }
+
+  reshuffleVotes.delete(payload.roomCode);
+  broadcastSide35VoteStatus(io, payload.roomCode, null);
+
+  if (otherVote === 'accept') {
+    applyAndBroadcast(io, payload.roomCode, {
+      type: 'RESHUFFLE_ACCEPT',
+      payload: { side: '35' },
+    });
+  } else {
+    applyAndBroadcast(io, payload.roomCode, {
+      type: 'RESHUFFLE_DECLINE',
+      payload: { side: '35' },
+    });
+  }
+}
+
+function broadcastSide35VoteStatus(
+  io: SocketIOServer,
+  roomCode: string,
+  status: { votedSeat: number; vote: 'accept' | 'decline' } | null,
+) {
+  const room = roomManager.getRoom(roomCode);
+  if (!room) return;
+  for (const p of room.players) {
+    if (p.socketId) {
+      io.to(p.socketId).emit('reshuffle:voteStatus', status);
+    }
+  }
+}
+
+function applyAndBroadcast(io: SocketIOServer, roomCode: string, action: GameAction) {
+  const result = roomManager.applyAction(roomCode, action);
+  if ('error' in result) return;
+
+  const room = roomManager.getRoom(roomCode);
+  if (!room) return;
+
+  for (const p of room.players) {
+    const view = roomManager.getPlayerView(roomCode, p.seatIndex);
+    if (view && p.socketId) {
+      io.to(p.socketId).emit('game:privateHand', view);
+    }
+  }
+}
 
 export function setupSocketHandlers(io: SocketIOServer) {
   io.on('connection', (socket: Socket) => {
@@ -178,6 +273,22 @@ export function setupSocketHandlers(io: SocketIOServer) {
       handleGameAction({ type: 'SHUFFLE_DEAL' }, data.token);
     });
 
+    socket.on('reshuffle:accept', (data: { token: string; side: '8' | '35' }) => {
+      if (data.side === '8') {
+        handleGameAction({ type: 'RESHUFFLE_ACCEPT', payload: { side: '8' } }, data.token);
+        return;
+      }
+      handleSide35Vote(io, data.token, 'accept');
+    });
+
+    socket.on('reshuffle:decline', (data: { token: string; side: '8' | '35' }) => {
+      if (data.side === '8') {
+        handleGameAction({ type: 'RESHUFFLE_DECLINE', payload: { side: '8' } }, data.token);
+        return;
+      }
+      handleSide35Vote(io, data.token, 'decline');
+    });
+
     socket.on('game:nextHand', (data: { token: string }) => {
       handleGameAction({ type: 'NEXT_HAND' }, data.token);
     });
@@ -205,6 +316,7 @@ export function setupSocketHandlers(io: SocketIOServer) {
         }
       }
 
+      reshuffleVotes.delete(payload.roomCode);
       roomManager.removeRoom(payload.roomCode);
     });
 
@@ -242,6 +354,7 @@ export function setupSocketHandlers(io: SocketIOServer) {
               io.sockets.sockets.get(p.socketId)?.leave(result.code);
             }
           }
+          reshuffleVotes.delete(result.code);
           roomManager.removeRoom(result.code);
         }
       }, RECONNECT_GRACE_MS);

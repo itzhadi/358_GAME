@@ -37,6 +37,17 @@ function makeBasicGame(dealerIndex = 0): GameState {
   });
 }
 
+function skipReshuffle(s: GameState): GameState {
+  if (s.phase !== 'RESHUFFLE_WINDOW') return s;
+  if (!s.reshuffleUsedBy8 && s.reshuffleWindowFor8) {
+    s = gameReducer(s, { type: 'RESHUFFLE_DECLINE', payload: { side: '8' } });
+  }
+  if (s.phase === 'RESHUFFLE_WINDOW' && !s.reshuffleUsedBy35 && s.reshuffleWindowFor35) {
+    s = gameReducer(s, { type: 'RESHUFFLE_DECLINE', payload: { side: '35' } });
+  }
+  return s;
+}
+
 // ============================================================
 // Deck Tests
 // ============================================================
@@ -414,9 +425,10 @@ describe('Game Engine', () => {
     expect(state.playerHands[1]).toHaveLength(16);
     expect(state.playerHands[2]).toHaveLength(16);
     expect(state.kupa).toHaveLength(4);
-    // First hand: no exchange, go to cutter pick
+    expect(state.phase).toBe('RESHUFFLE_WINDOW');
+    state = skipReshuffle(state);
     expect(state.phase).toBe('CUTTER_PICK');
-    expect(state.currentPlayerIndex).toBe(0); // dealer picks cutter
+    expect(state.currentPlayerIndex).toBe(0);
   });
 
   it('should not allow dealing in wrong phase', () => {
@@ -426,6 +438,7 @@ describe('Game Engine', () => {
 
   it('should pick cutter suit', () => {
     state = gameReducer(state, { type: 'SHUFFLE_DEAL' });
+    state = skipReshuffle(state);
     state = gameReducer(state, { type: 'PICK_CUTTER', payload: { suit: 'H' } });
     expect(state.cutterSuit).toBe('H');
     expect(state.phase).toBe('DEALER_DISCARD');
@@ -433,6 +446,7 @@ describe('Game Engine', () => {
 
   it('should handle dealer discard + kupa', () => {
     state = gameReducer(state, { type: 'SHUFFLE_DEAL' });
+    state = skipReshuffle(state);
     state = gameReducer(state, { type: 'PICK_CUTTER', payload: { suit: 'H' } });
 
     // Dealer discards 4 cards
@@ -451,6 +465,7 @@ describe('Game Engine', () => {
 
   it('should reject discard of wrong number of cards', () => {
     state = gameReducer(state, { type: 'SHUFFLE_DEAL' });
+    state = skipReshuffle(state);
     state = gameReducer(state, { type: 'PICK_CUTTER', payload: { suit: 'H' } });
     const dealerHand = state.playerHands[0];
     expect(() =>
@@ -463,9 +478,8 @@ describe('Game Engine', () => {
 
   describe('Full hand play-through', () => {
     it('should play 16 tricks and score correctly', () => {
-      // Deal
       state = gameReducer(state, { type: 'SHUFFLE_DEAL' });
-      // Pick cutter
+      state = skipReshuffle(state);
       state = gameReducer(state, { type: 'PICK_CUTTER', payload: { suit: 'S' } });
       // Discard 4
       const toDiscard = state.playerHands[0].slice(0, 4).map((c) => c.id);
@@ -504,6 +518,7 @@ describe('Game Engine', () => {
   describe('getPlayerView', () => {
     it('should hide other players hands', () => {
       state = gameReducer(state, { type: 'SHUFFLE_DEAL' });
+      state = skipReshuffle(state);
       const view = getPlayerView(state, 1);
       // Player 1 sees their own hand
       expect(view.playerHands[1]).toEqual(state.playerHands[1]);
@@ -514,6 +529,7 @@ describe('Game Engine', () => {
 
     it('should show kupa only to dealer', () => {
       state = gameReducer(state, { type: 'SHUFFLE_DEAL' });
+      state = skipReshuffle(state);
       const dealerView = getPlayerView(state, 0);
       expect(dealerView.kupa.some((c) => c.id !== 'hidden')).toBe(true);
       const otherView = getPlayerView(state, 1);
@@ -524,6 +540,7 @@ describe('Game Engine', () => {
   describe('Must-follow-suit enforcement in play', () => {
     it('should reject off-suit play when suit is available', () => {
       state = gameReducer(state, { type: 'SHUFFLE_DEAL' });
+      state = skipReshuffle(state);
       state = gameReducer(state, { type: 'PICK_CUTTER', payload: { suit: 'S' } });
       const toDiscard = state.playerHands[0].slice(0, 4).map((c) => c.id);
       state = gameReducer(state, { type: 'DEALER_DISCARD_4', payload: { cardIds: toDiscard } });
@@ -561,6 +578,7 @@ describe('Game Engine', () => {
   describe('Wrong turn enforcement', () => {
     it('should reject play from wrong seat', () => {
       state = gameReducer(state, { type: 'SHUFFLE_DEAL' });
+      state = skipReshuffle(state);
       state = gameReducer(state, { type: 'PICK_CUTTER', payload: { suit: 'H' } });
       const toDiscard = state.playerHands[0].slice(0, 4).map((c) => c.id);
       state = gameReducer(state, { type: 'DEALER_DISCARD_4', payload: { cardIds: toDiscard } });
@@ -576,5 +594,145 @@ describe('Game Engine', () => {
         }),
       ).toThrow();
     });
+  });
+});
+
+// ============================================================
+// Reshuffle Tests (per hand)
+// ============================================================
+
+describe('Reshuffle', () => {
+  let state: GameState;
+
+  beforeEach(() => {
+    state = makeBasicGame(0);
+  });
+
+  it('every hand enters RESHUFFLE_WINDOW after deal', () => {
+    state = gameReducer(state, { type: 'SHUFFLE_DEAL' });
+    expect(state.phase).toBe('RESHUFFLE_WINDOW');
+    expect(state.reshuffleWindowFor8).toBe(true);
+    expect(state.reshuffleWindowFor35).toBe(true);
+    expect(state.reshuffleUsedBy8).toBe(false);
+    expect(state.reshuffleUsedBy35).toBe(false);
+  });
+
+  it('both sides decline → advance to CUTTER_PICK', () => {
+    state = gameReducer(state, { type: 'SHUFFLE_DEAL' });
+    state = gameReducer(state, { type: 'RESHUFFLE_DECLINE', payload: { side: '8' } });
+    expect(state.phase).toBe('RESHUFFLE_WINDOW');
+    state = gameReducer(state, { type: 'RESHUFFLE_DECLINE', payload: { side: '35' } });
+    expect(state.phase).toBe('CUTTER_PICK');
+  });
+
+  it('side 8 accepts → re-deal + response window for 35 in SAME hand', () => {
+    state = gameReducer(state, { type: 'SHUFFLE_DEAL' });
+    state = gameReducer(state, { type: 'RESHUFFLE_ACCEPT', payload: { side: '8' } });
+
+    expect(state.reshuffleUsedBy8).toBe(true);
+    expect(state.reshuffleUsedBy35).toBe(false);
+    expect(state.reshuffleWindowFor8).toBe(false);
+    expect(state.reshuffleWindowFor35).toBe(true);
+    expect(state.phase).toBe('RESHUFFLE_WINDOW');
+    expect(state.playerHands[0]).toHaveLength(16);
+  });
+
+  it('side 35 accepts → re-deal + response window for 8 in SAME hand', () => {
+    state = gameReducer(state, { type: 'SHUFFLE_DEAL' });
+    state = gameReducer(state, { type: 'RESHUFFLE_ACCEPT', payload: { side: '35' } });
+
+    expect(state.reshuffleUsedBy35).toBe(true);
+    expect(state.reshuffleUsedBy8).toBe(false);
+    expect(state.reshuffleWindowFor35).toBe(false);
+    expect(state.reshuffleWindowFor8).toBe(true);
+    expect(state.phase).toBe('RESHUFFLE_WINDOW');
+  });
+
+  it('both sides reshuffle in same hand → max 2 re-deals, then advance', () => {
+    state = gameReducer(state, { type: 'SHUFFLE_DEAL' });
+    // Side 35 reshuffles first
+    state = gameReducer(state, { type: 'RESHUFFLE_ACCEPT', payload: { side: '35' } });
+    expect(state.phase).toBe('RESHUFFLE_WINDOW');
+    // Side 8 responds with reshuffle
+    state = gameReducer(state, { type: 'RESHUFFLE_ACCEPT', payload: { side: '8' } });
+    expect(state.reshuffleUsedBy8).toBe(true);
+    expect(state.reshuffleUsedBy35).toBe(true);
+    expect(state.phase).toBe('CUTTER_PICK');
+  });
+
+  it('one side accepts, other declines response → advance', () => {
+    state = gameReducer(state, { type: 'SHUFFLE_DEAL' });
+    state = gameReducer(state, { type: 'RESHUFFLE_ACCEPT', payload: { side: '8' } });
+    expect(state.phase).toBe('RESHUFFLE_WINDOW');
+    state = gameReducer(state, { type: 'RESHUFFLE_DECLINE', payload: { side: '35' } });
+    expect(state.phase).toBe('CUTTER_PICK');
+  });
+
+  it('side cannot reshuffle twice in the same hand', () => {
+    state = gameReducer(state, { type: 'SHUFFLE_DEAL' });
+    state = gameReducer(state, { type: 'RESHUFFLE_ACCEPT', payload: { side: '8' } });
+    // Side 8 already used, window is closed
+    expect(() =>
+      gameReducer(state, { type: 'RESHUFFLE_ACCEPT', payload: { side: '8' } }),
+    ).toThrow();
+  });
+
+  it('rejects reshuffle outside RESHUFFLE_WINDOW phase', () => {
+    state = gameReducer(state, { type: 'SHUFFLE_DEAL' });
+    state = skipReshuffle(state);
+    expect(state.phase).toBe('CUTTER_PICK');
+    expect(() =>
+      gameReducer(state, { type: 'RESHUFFLE_ACCEPT', payload: { side: '8' } }),
+    ).toThrow();
+  });
+
+  it('reshuffle resets every hand — both sides can reshuffle again in hand 2', () => {
+    // Hand 1: both reshuffle
+    state = gameReducer(state, { type: 'SHUFFLE_DEAL' });
+    state = gameReducer(state, { type: 'RESHUFFLE_ACCEPT', payload: { side: '8' } });
+    state = gameReducer(state, { type: 'RESHUFFLE_ACCEPT', payload: { side: '35' } });
+    expect(state.phase).toBe('CUTTER_PICK');
+
+    // Play through hand 1
+    state = gameReducer(state, { type: 'PICK_CUTTER', payload: { suit: 'S' } });
+    const toDiscard = state.playerHands[state.dealerIndex].slice(0, 4).map((c) => c.id);
+    state = gameReducer(state, { type: 'DEALER_DISCARD_4', payload: { cardIds: toDiscard } });
+    for (let trick = 0; trick < 16; trick++) {
+      for (let card = 0; card < 3; card++) {
+        const seat = state.currentPlayerIndex;
+        const hand = state.playerHands[seat];
+        const leadSuit = state.currentTrick?.leadSuit ?? null;
+        const legal = getLegalCards(hand, leadSuit);
+        state = gameReducer(state, {
+          type: 'PLAY_CARD',
+          payload: { seatIndex: seat, cardId: legal[0].id },
+        });
+      }
+    }
+    expect(state.phase).toBe('HAND_SCORING');
+
+    // Go to hand 2
+    state = gameReducer(state, { type: 'NEXT_HAND' });
+    state = gameReducer(state, { type: 'SHUFFLE_DEAL' });
+
+    // Both sides can reshuffle again in the new hand
+    expect(state.phase).toBe('RESHUFFLE_WINDOW');
+    expect(state.reshuffleUsedBy8).toBe(false);
+    expect(state.reshuffleUsedBy35).toBe(false);
+    expect(state.reshuffleWindowFor8).toBe(true);
+    expect(state.reshuffleWindowFor35).toBe(true);
+  });
+
+  it('35 declines initially, 8 accepts → 35 gets response with new cards', () => {
+    state = gameReducer(state, { type: 'SHUFFLE_DEAL' });
+    // 35 declines first
+    state = gameReducer(state, { type: 'RESHUFFLE_DECLINE', payload: { side: '35' } });
+    expect(state.phase).toBe('RESHUFFLE_WINDOW');
+    // 8 accepts → re-deal
+    state = gameReducer(state, { type: 'RESHUFFLE_ACCEPT', payload: { side: '8' } });
+    // 35 should get a response window (they haven't USED their reshuffle)
+    expect(state.phase).toBe('RESHUFFLE_WINDOW');
+    expect(state.reshuffleWindowFor35).toBe(true);
+    expect(state.reshuffleWindowFor8).toBe(false);
   });
 });

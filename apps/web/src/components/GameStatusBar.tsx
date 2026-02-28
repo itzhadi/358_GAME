@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { GameState } from '@358/shared';
 import { SuitIcon } from './PlayingCard';
-import { useGameStore } from '@/store/gameStore';
 import { cn } from '@/lib/utils';
 
 interface GameStatusBarProps {
@@ -12,7 +11,6 @@ interface GameStatusBarProps {
 }
 
 export function GameStatusBar({ gameState, aiSeats }: GameStatusBarProps) {
-  const { resetGame } = useGameStore();
   const [expanded, setExpanded] = useState(false);
   const hasAI = aiSeats.size > 0;
   const { players, targets, tricksTakenCount, scoreTotal, victoryTarget, cutterSuit, trickNumber, handNumber, phase } = gameState;
@@ -22,21 +20,7 @@ export function GameStatusBar({ gameState, aiSeats }: GameStatusBarProps) {
 
   return (
     <div className="w-full glass-strong border-b border-white/8 z-30 relative">
-      <div className="grid grid-cols-[auto_1fr_auto_auto] items-center px-2.5 py-2 text-xs gap-1.5">
-        <button
-          onClick={() => {
-            if (confirm('בטוח שאתה רוצה לצאת מהמשחק?')) resetGame();
-          }}
-          className="w-8 h-8 flex items-center justify-center rounded-lg text-rose-400/60 hover:text-rose-300 hover:bg-rose-500/10 transition-all"
-          title="יציאה מהמשחק"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-            <polyline points="16 17 21 12 16 7" />
-            <line x1="21" y1="12" x2="9" y2="12" />
-          </svg>
-        </button>
-
+      <div className="grid grid-cols-[1fr_auto_auto] items-center px-2.5 py-2 text-xs gap-1.5">
         <div className="flex items-center gap-2.5 overflow-hidden">
           <span className="text-muted-foreground font-medium shrink-0">יד {Math.max(handNumber, 1)}</span>
           {showCutter && (

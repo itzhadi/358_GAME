@@ -248,6 +248,14 @@ export function checkVictory(
 }
 
 /**
+ * Which reshuffle "side" does a seat belong to?
+ * Dealer (target 8) = '8', the other two (targets 3+5) = '35'.
+ */
+export function getReshuffleSide(seatIndex: number, dealerIndex: number): '8' | '35' {
+  return seatIndex === dealerIndex ? '8' : '35';
+}
+
+/**
  * Rotate dealer clockwise.
  */
 export function nextDealer(currentDealer: number): number {
@@ -258,5 +266,5 @@ export function nextDealer(currentDealer: number): number {
  * Get next player clockwise.
  */
 export function nextPlayerClockwise(currentSeat: number): number {
-  return (currentSeat + 1) % 3;
+  return (currentSeat + 2) % 3;
 }

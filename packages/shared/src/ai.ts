@@ -218,6 +218,77 @@ function getCurrentWinner(
 }
 
 // ============================================================
+// RESHUFFLE DECISION — should a side request a redeal?
+// ============================================================
+
+export function aiShouldReshuffle(hand: Card[], target: number): boolean {
+  if (target === 8) return shouldReshuffle8(hand);
+  return shouldReshuffle35(hand, target);
+}
+
+function shouldReshuffle8(hand: Card[]): boolean {
+  let bestSuit: Suit = 'S';
+  let bestScore = -Infinity;
+  for (const suit of SUITS) {
+    const suited = suitCards(hand, suit);
+    if (suited.length === 0) continue;
+    const len = suited.length;
+    const topSeq = topSequenceLength(suited);
+    const hasAce = suited.some((c) => c.rank === 'A');
+    const score = len * 3 + topSeq * 4 + (hasAce ? 2 : 0) + suitStrength(suited) / 10;
+    if (score > bestScore) { bestScore = score; bestSuit = suit; }
+  }
+
+  const cutterCards = suitCards(hand, bestSuit);
+  const cutterLen = cutterCards.length;
+
+  if (cutterLen <= 4) return true;
+
+  const cutterTopSeq = topSequenceLength(cutterCards);
+  let tricks = cutterTopSeq + (cutterLen - cutterTopSeq) * 0.6;
+
+  for (const suit of SUITS) {
+    if (suit === bestSuit) continue;
+    tricks += topSequenceLength(suitCards(hand, suit));
+  }
+
+  const voidCount = SUITS.filter((s) => s !== bestSuit && suitCards(hand, s).length === 0).length;
+  tricks += voidCount * 0.5;
+
+  tricks += 1;
+
+  return tricks < 7;
+}
+
+function shouldReshuffle35(hand: Card[], target: number): boolean {
+  let tricks = 0;
+
+  for (const suit of SUITS) {
+    const suited = suitCards(hand, suit);
+    if (suited.length === 0) continue;
+    const topSeq = topSequenceLength(suited);
+    tricks += topSeq;
+
+    const sorted = sortDesc(suited);
+    for (let i = topSeq; i < sorted.length; i++) {
+      if (RANK_VALUE[sorted[i].rank] >= 13) tricks += 0.4;
+      else if (RANK_VALUE[sorted[i].rank] >= 12) tricks += 0.2;
+    }
+  }
+
+  const voidCount = SUITS.filter((s) => suitCards(hand, s).length === 0).length;
+  tricks += voidCount * 0.75;
+
+  for (const suit of SUITS) {
+    const len = suitCards(hand, suit).length;
+    if (len >= 7) tricks += 1;
+    else if (len >= 6) tricks += 0.5;
+  }
+
+  return tricks < target - 1;
+}
+
+// ============================================================
 // CUTTER SELECTION — dealer's strategic choice
 // ============================================================
 
