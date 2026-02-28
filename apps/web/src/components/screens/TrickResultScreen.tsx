@@ -17,7 +17,7 @@ export function TrickResultScreen() {
 
   return (
     <div className="fixed inset-0 z-40 flex flex-col items-center justify-center p-6 text-center animate-fade-in"
-      style={{ background: 'radial-gradient(ellipse at 50% 40%, hsla(265, 40%, 12%, 0.98) 0%, hsla(230, 25%, 7%, 0.99) 70%)' }}>
+      style={{ background: 'radial-gradient(ellipse at 50% 40%, hsla(160, 25%, 10%, 0.98) 0%, hsla(228, 20%, 6%, 0.99) 70%)' }}>
 
       <div className="glass rounded-3xl p-6 max-w-sm w-full animate-scale-in">
         <div className="text-xs text-muted-foreground mb-2">לקיחה {lastTrick.trickNumber}/16</div>

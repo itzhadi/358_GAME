@@ -33,7 +33,7 @@ export function ReceivedCardsScreen() {
 
   return (
     <div className="flex flex-col items-center flex-1 p-4 pb-24 text-center animate-scale-in relative overflow-y-auto">
-      <div className="absolute top-[10%] left-[10%] w-[200px] h-[200px] rounded-full bg-green-500/10 blur-[100px] pointer-events-none" />
+      <div className="absolute top-[10%] left-[10%] w-[200px] h-[200px] rounded-full bg-emerald-500/8 blur-[100px] pointer-events-none" />
 
       <div className="text-5xl mb-3 animate-float">🔄</div>
       <h2 className="text-2xl font-black text-gradient-primary mb-1">סיכום החלפה</h2>
@@ -75,7 +75,7 @@ export function ReceivedCardsScreen() {
           {Array.from(groupedReturned.entries()).map(([fromSeat, cards]) => (
             <div key={fromSeat} className="mb-3 last:mb-0">
               <p className="text-xs text-muted-foreground mb-2">
-                מ<span className="font-bold text-purple-400">{players[fromSeat].name}</span>
+                מ<span className="font-bold text-emerald-400">{players[fromSeat].name}</span>
                 {hasAI && aiSeats.has(fromSeat) && ' 🤖'}:
               </p>
               <div className="flex justify-center gap-3">

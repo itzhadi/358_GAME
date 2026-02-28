@@ -19,7 +19,7 @@ export function HandScoringScreen() {
 
   return (
     <div className="flex flex-col items-center flex-1 p-4 pb-24 text-center animate-scale-in relative overflow-y-auto">
-      <div className="absolute top-[5%] right-[-5%] w-[250px] h-[250px] rounded-full bg-purple-600/10 blur-[100px] pointer-events-none" />
+      <div className="absolute top-[5%] right-[-5%] w-[250px] h-[250px] rounded-full bg-emerald-600/8 blur-[100px] pointer-events-none" />
 
       <h2 className="text-2xl font-black text-gradient-primary mb-1">סיכום יד {gameState.handNumber}</h2>
       <p className="text-sm text-muted-foreground mb-6">תוצאות הלקיחות</p>
@@ -70,7 +70,7 @@ export function HandScoringScreen() {
                 </span>
                 <span className={cn(
                   'font-mono font-bold',
-                  isLeading ? 'text-purple-400' : '',
+                  isLeading ? 'text-emerald-400' : '',
                 )}>
                   {total} <span className="text-muted-foreground font-normal">/ {gameState.victoryTarget}</span>
                 </span>
@@ -80,7 +80,7 @@ export function HandScoringScreen() {
                   className={cn(
                     'h-full rounded-full transition-all duration-700 ease-out',
                     isLeading
-                      ? 'bg-gradient-to-l from-purple-500 to-blue-500 shadow-lg shadow-purple-500/20'
+                      ? 'bg-gradient-to-l from-emerald-400 to-teal-500 shadow-lg shadow-emerald-500/15'
                       : 'bg-gradient-to-l from-slate-500 to-slate-600',
                   )}
                   style={{ width: `${pct}%` }}

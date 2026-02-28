@@ -54,7 +54,7 @@ export function CutterPickScreen() {
     const sd = chosenSuit ? SUIT_DISPLAY[chosenSuit] : null;
     return (
       <div className="flex flex-col items-center justify-center flex-1 p-4 text-center relative overflow-hidden">
-        <div className="absolute top-[15%] left-[20%] w-[250px] h-[250px] rounded-full bg-amber-500/10 blur-[100px] pointer-events-none" />
+        <div className="absolute top-[15%] left-[20%] w-[250px] h-[250px] rounded-full bg-amber-500/8 blur-[100px] pointer-events-none" />
 
         <div className="text-5xl mb-4 animate-float">🤖</div>
         <h2 className="text-2xl font-black text-gradient-primary mb-2">{dealer.name}</h2>
@@ -87,7 +87,6 @@ export function CutterPickScreen() {
     );
   }
 
-  // Online non-dealer: waiting screen with own hand visible
   if (isOnline && !isMyTurn) {
     return (
       <div className="flex flex-col flex-1 min-h-0">
@@ -110,17 +109,17 @@ export function CutterPickScreen() {
   };
 
   const suitConfig: Record<Suit, { name: string; symbol: string; bg: string; glow: string }> = {
-    S: { name: 'עלה', symbol: '♠', bg: 'from-slate-600 to-slate-700', glow: 'hover:shadow-slate-500/30' },
-    H: { name: 'לב', symbol: '♥', bg: 'from-rose-600 to-red-700', glow: 'hover:shadow-rose-500/30' },
-    D: { name: 'יהלום', symbol: '♦', bg: 'from-rose-500 to-red-600', glow: 'hover:shadow-rose-500/30' },
-    C: { name: 'תלתן', symbol: '♣', bg: 'from-slate-700 to-slate-800', glow: 'hover:shadow-slate-500/30' },
+    S: { name: 'עלה', symbol: '♠', bg: 'from-slate-600 to-slate-700', glow: 'hover:shadow-slate-500/25' },
+    H: { name: 'לב', symbol: '♥', bg: 'from-rose-600 to-red-700', glow: 'hover:shadow-rose-500/25' },
+    D: { name: 'יהלום', symbol: '♦', bg: 'from-rose-500 to-red-600', glow: 'hover:shadow-rose-500/25' },
+    C: { name: 'תלתן', symbol: '♣', bg: 'from-slate-700 to-slate-800', glow: 'hover:shadow-slate-500/25' },
   };
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <div className="text-center py-4 glass-strong">
         <h2 className="text-lg font-bold">{dealer.name}</h2>
-        <p className="text-sm text-purple-400 font-medium">בחר חותך</p>
+        <p className="text-sm text-emerald-400 font-medium">בחר חותך</p>
       </div>
 
       <div className="flex-1 flex items-center justify-center px-4">

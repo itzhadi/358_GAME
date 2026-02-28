@@ -20,8 +20,8 @@ export function DealerReturnsScreen() {
 
   return (
     <div className="flex flex-col items-center flex-1 p-4 pb-24 text-center relative overflow-y-auto">
-      <div className="absolute top-[10%] left-[-5%] w-[200px] h-[200px] rounded-full bg-purple-600/10 blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-[10%] right-[-5%] w-[200px] h-[200px] rounded-full bg-cyan-600/10 blur-[100px] pointer-events-none" />
+      <div className="absolute top-[10%] left-[-5%] w-[200px] h-[200px] rounded-full bg-emerald-600/8 blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-[10%] right-[-5%] w-[200px] h-[200px] rounded-full bg-cyan-600/6 blur-[100px] pointer-events-none" />
 
       <h2 className="text-xl font-bold mb-1">{dealer.name}</h2>
       <p className="text-muted-foreground text-sm mb-4">

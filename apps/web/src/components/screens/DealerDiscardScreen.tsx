@@ -25,7 +25,7 @@ export function DealerDiscardScreen() {
     return (
       <div className="flex flex-col flex-1 min-h-0">
         <div className="flex-1 flex flex-col items-center justify-center p-4 text-center relative overflow-hidden">
-          <div className="absolute bottom-[10%] right-[-5%] w-[200px] h-[200px] rounded-full bg-purple-600/10 blur-[100px] pointer-events-none" />
+          <div className="absolute bottom-[10%] right-[-5%] w-[200px] h-[200px] rounded-full bg-emerald-600/8 blur-[100px] pointer-events-none" />
 
           {isAiDealer && <div className="text-5xl mb-4 animate-float">🤖</div>}
           <h2 className="text-xl font-bold mb-2">{dealer.name}</h2>
@@ -77,7 +77,7 @@ export function DealerDiscardScreen() {
       <div className="text-center py-4 glass-strong">
         <h2 className="text-lg font-bold">{dealer.name}</h2>
         <p className="text-sm text-muted-foreground">
-          בחר <span className="text-purple-400 font-bold">4 קלפים</span> לזרוק → קבל קופה
+          בחר <span className="text-emerald-400 font-bold">4 קלפים</span> לזרוק → קבל קופה
         </p>
         {gameState.cutterSuit && (
           <div className="flex items-center justify-center gap-1.5 mt-1">
@@ -93,8 +93,8 @@ export function DealerDiscardScreen() {
             <div
               key={i}
               className={`w-3 h-3 rounded-full transition-all duration-300 ${i < selectedCards.size
-                  ? 'bg-purple-500 shadow-lg shadow-purple-500/50'
-                  : 'bg-white/10'
+                  ? 'bg-emerald-500 shadow-lg shadow-emerald-500/40'
+                  : 'bg-white/8'
                 }`}
             />
           ))}

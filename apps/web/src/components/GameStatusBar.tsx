@@ -21,40 +21,36 @@ export function GameStatusBar({ gameState, aiSeats }: GameStatusBarProps) {
   const showCutter = !!cutterSuit && phase !== 'SETUP_DEAL';
 
   return (
-    <div className="w-full glass-strong border-b border-white/10 z-30 relative">
-      {/* Compact bar — always visible */}
-      <div className="grid grid-cols-[auto_1fr_auto_auto] items-center px-2 py-2 text-xs gap-1">
-        {/* Exit button — always visible */}
+    <div className="w-full glass-strong border-b border-white/8 z-30 relative">
+      <div className="grid grid-cols-[auto_1fr_auto_auto] items-center px-2.5 py-2 text-xs gap-1.5">
         <button
           onClick={() => {
             if (confirm('בטוח שאתה רוצה לצאת מהמשחק?')) resetGame();
           }}
-          className="w-8 h-8 flex items-center justify-center rounded-lg text-rose-400/70 hover:text-rose-300 hover:bg-rose-500/15 transition-all"
+          className="w-8 h-8 flex items-center justify-center rounded-lg text-rose-400/60 hover:text-rose-300 hover:bg-rose-500/10 transition-all"
           title="יציאה מהמשחק"
         >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
             <polyline points="16 17 21 12 16 7" />
             <line x1="21" y1="12" x2="9" y2="12" />
           </svg>
         </button>
 
-        {/* Game info */}
-        <div className="flex items-center gap-2 overflow-hidden">
+        <div className="flex items-center gap-2.5 overflow-hidden">
           <span className="text-muted-foreground font-medium shrink-0">יד {Math.max(handNumber, 1)}</span>
           {showCutter && (
-            <span className="flex items-center gap-1 shrink-0">
+            <span className="flex items-center gap-1 shrink-0 bg-white/5 rounded-full px-2 py-0.5">
               <SuitIcon suit={cutterSuit!} className="text-lg" />
             </span>
           )}
           {showTricks && (
             <span className="text-muted-foreground shrink-0">
-              <span className="text-purple-400 font-bold">{trickNumber}</span>/16
+              <span className="text-emerald-400 font-bold">{trickNumber}</span>/16
             </span>
           )}
         </div>
 
-        {/* Player scores */}
         <div className="flex items-center gap-1.5">
           {players.map((p, i) => {
             const taken = tricksTakenCount[i];
@@ -62,13 +58,13 @@ export function GameStatusBar({ gameState, aiSeats }: GameStatusBarProps) {
             const isActive = gameState.currentPlayerIndex === i;
             const isOver = taken > target;
             const isMet = taken === target;
-            const targetColor = target === 8 ? 'text-amber-400' : target === 5 ? 'text-purple-400' : 'text-cyan-400';
+            const targetColor = target === 8 ? 'text-amber-400' : target === 5 ? 'text-emerald-400' : 'text-cyan-400';
             return (
               <span
                 key={p.id}
                 className={cn(
-                  'flex items-center gap-1 px-1.5 py-0.5 rounded-md transition-all',
-                  isActive ? 'bg-purple-500/20' : '',
+                  'flex items-center gap-1 px-2 py-0.5 rounded-lg transition-all',
+                  isActive ? 'bg-emerald-500/15 ring-1 ring-emerald-500/20' : '',
                 )}
               >
                 <span className="text-[10px] text-slate-400 truncate max-w-[50px]">{p.name}</span>
@@ -83,14 +79,13 @@ export function GameStatusBar({ gameState, aiSeats }: GameStatusBarProps) {
           })}
         </div>
 
-        {/* Expand button */}
         <button
           onClick={() => setExpanded((v) => !v)}
           className={cn(
             'w-8 h-8 flex items-center justify-center rounded-lg transition-all',
             expanded
-              ? 'bg-purple-500/20 text-purple-300'
-              : 'text-slate-400 hover:text-slate-200 hover:bg-white/10',
+              ? 'bg-emerald-500/15 text-emerald-300'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-white/8',
           )}
           title="טבלת ניקוד"
         >
@@ -111,7 +106,6 @@ export function GameStatusBar({ gameState, aiSeats }: GameStatusBarProps) {
         </button>
       </div>
 
-      {/* Expanded panel */}
       {expanded && (
         <div className="px-3 pb-3 animate-fade-in">
           <div className="glass rounded-2xl overflow-hidden">
@@ -128,20 +122,20 @@ export function GameStatusBar({ gameState, aiSeats }: GameStatusBarProps) {
               const isActive = gameState.currentPlayerIndex === i;
               const delta = taken - target;
               const isAI = hasAI && aiSeats.has(i);
-              const targetColor = target === 8 ? 'text-amber-400' : target === 5 ? 'text-purple-400' : 'text-cyan-400';
+              const targetColor = target === 8 ? 'text-amber-400' : target === 5 ? 'text-emerald-400' : 'text-cyan-400';
 
               return (
                 <div
                   key={p.id}
                   className={cn(
                     'grid grid-cols-[1fr_40px_50px_50px] gap-1 px-3 py-2.5 border-b border-white/5 last:border-0 text-sm',
-                    isActive && 'bg-purple-500/5',
+                    isActive && 'bg-emerald-500/5',
                   )}
                 >
                   <div className="flex items-center gap-1.5 font-bold truncate">
                     <span className="text-xs">{isAI ? '🤖' : '👤'}</span>
                     <span className="truncate">{p.name}</span>
-                    {isActive && <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />}
+                    {isActive && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
                   </div>
                   <div className={cn('text-center font-black', targetColor)}>{target}</div>
                   <div className="text-center">

@@ -27,16 +27,12 @@ export function ExchangeScreen() {
   const isGiving = gameState.phase === 'EXCHANGE_GIVE';
   const isReturning = gameState.phase === 'EXCHANGE_RETURN';
 
-  // Collect cards given TO me (cards I received from others)
   const cardsGivenToMe = exchangeInfo.givenCards.filter(g => g.toSeat === humanSeat);
-  // Collect cards returned TO me (cards returned by others after I gave)
-  // Hide returns from the dealer until after cutter pick (they should be revealed only after choosing cutter)
   const isDealerBeforeCutter = humanSeat === gameState.dealerIndex && !gameState.cutterSuit;
   const cardsReturnedToMe = isDealerBeforeCutter
     ? []
     : exchangeInfo.returnedCards.filter(r => r.toSeat === humanSeat);
 
-  // AI or online other player's turn - show waiting with relevant exchange info
   if (isAiTurn || (isOnline && !isMyTurn)) {
     return (
       <div className="flex flex-col flex-1 min-h-0">
@@ -48,8 +44,8 @@ export function ExchangeScreen() {
           <p className="text-muted-foreground text-sm animate-pulse mb-4">ממתין...</p>
 
           {exchangeInfo.givenCards.filter(g => g.fromSeat === humanSeat).length > 0 && (
-            <div className="glass rounded-2xl p-4 w-full max-w-sm mb-3 border border-blue-500/20">
-              <p className="text-sm font-bold text-blue-400 mb-2">📤 קלפים שנתת:</p>
+            <div className="glass rounded-2xl p-4 w-full max-w-sm mb-3 border border-cyan-500/15">
+              <p className="text-sm font-bold text-cyan-400 mb-2">📤 קלפים שנתת:</p>
               <div className="flex justify-center gap-2 flex-wrap">
                 {exchangeInfo.givenCards.filter(g => g.fromSeat === humanSeat).map((g) => (
                   <div key={g.card.id} className="text-center">
@@ -62,7 +58,7 @@ export function ExchangeScreen() {
           )}
 
           {cardsReturnedToMe.length > 0 && (
-            <div className="glass rounded-2xl p-4 w-full max-w-sm border border-green-500/20">
+            <div className="glass rounded-2xl p-4 w-full max-w-sm border border-green-500/15">
               <p className="text-sm font-bold text-green-400 mb-2">🎁 קלפים שהוחזרו לך:</p>
               <div className="flex justify-center gap-2 flex-wrap">
                 {cardsReturnedToMe.map((r) => (
@@ -138,7 +134,6 @@ export function ExchangeScreen() {
       }
     }
 
-    // Calculate autoReturnCard matching engine order (first pending direction)
     for (const giving of givings) {
       if (giving.toSeat === currentSeat) {
         const givenForDir = givenCards.filter(
@@ -219,19 +214,17 @@ export function ExchangeScreen() {
         </h2>
         <p className="text-sm text-muted-foreground">
           {isGiving
-            ? <><span className="text-purple-400 font-bold">{currentPlayer.name}</span>: בחר {cardsToGive} קלפים לתת ל{partnerName}</>
+            ? <><span className="text-emerald-400 font-bold">{currentPlayer.name}</span>: בחר {cardsToGive} קלפים לתת ל{partnerName}</>
             : autoReturnCard
               ? <><span className="text-amber-400 font-bold">החזרה {doneMyReturns + 1}/{totalMyReturns}</span> — לחץ על הכפתור להחזרה</>
-              : <><span className="text-purple-400 font-bold">{currentPlayer.name}</span>: בחר קלף להחזיר ל{partnerName}</>
+              : <><span className="text-emerald-400 font-bold">{currentPlayer.name}</span>: בחר קלף להחזיר ל{partnerName}</>
           }
           {!isMyTurn && <span className="block text-xs mt-1 text-muted-foreground">(ממתין ל{currentPlayer.name}...)</span>}
         </p>
       </div>
 
-      {/* Exchange pairs: received ← → returned */}
       {isReturning && isMyTurn && exchangePairs.length > 0 && (
         <div className="mx-3 mt-3 flex-1 overflow-y-auto pb-2">
-          {/* Already completed pairs */}
           {exchangePairs.filter((p) => p.done).length > 0 && (
             <div className="glass rounded-2xl p-3 mb-2 border border-white/5">
               <p className="text-[10px] font-bold text-muted-foreground mb-2 text-center">✅ הוחזרו</p>
@@ -254,9 +247,8 @@ export function ExchangeScreen() {
             </div>
           )}
 
-          {/* Current pair */}
           {currentReceivedCard && currentReturnCardObj && (
-            <div className="glass rounded-2xl p-4 border border-amber-500/20">
+            <div className="glass rounded-2xl p-4 border border-amber-500/15">
               <p className="text-[10px] font-bold text-amber-400 mb-2 text-center">
                 {autoReturnIsReceived
                   ? '↩️ אין קלף גבוה יותר — מחזיר את הקלף שקיבלת'
@@ -270,7 +262,7 @@ export function ExchangeScreen() {
                 <span className="text-amber-400 text-2xl animate-pulse">→</span>
                 <div className="text-center">
                   <p className="text-[9px] text-rose-400 mb-0.5">מחזיר</p>
-                  <div className="ring-2 ring-amber-500/50 rounded-lg">
+                  <div className="ring-2 ring-amber-500/40 rounded-lg">
                     <PlayingCard card={currentReturnCardObj} />
                   </div>
                 </div>

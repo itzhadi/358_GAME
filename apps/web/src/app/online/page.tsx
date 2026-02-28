@@ -71,7 +71,7 @@ export default function OnlineLobbyPage() {
   if (roomCode && lobbyState) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[100dvh] p-6 relative overflow-hidden">
-        <div className="absolute top-[-10%] left-[20%] w-[300px] h-[300px] rounded-full bg-purple-600/10 blur-[100px] pointer-events-none" />
+        <div className="absolute top-[-10%] left-[20%] w-[300px] h-[300px] rounded-full bg-emerald-600/8 blur-[100px] pointer-events-none" />
 
         <h1 className="text-3xl font-black text-gradient-primary mb-2">חדר</h1>
         <button
@@ -103,18 +103,18 @@ export default function OnlineLobbyPage() {
               const isMe = i === playerSeat;
               return (
                 <div key={i} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
-                  isMe ? 'bg-purple-500/10 border-purple-500/30' : 'bg-white/5 border-white/5'
+                  isMe ? 'bg-emerald-500/8 border-emerald-500/20' : 'bg-white/[0.03] border-white/5'
                 }`}>
                   <div className="flex items-center gap-3">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                      player ? 'bg-gradient-to-br from-purple-500 to-blue-500' : 'bg-white/10'
+                      player ? 'bg-gradient-to-br from-emerald-500 to-teal-500' : 'bg-white/8'
                     }`}>
                       {player ? (i === 0 ? '👑' : i + 1) : '?'}
                     </div>
                     <div className="flex flex-col">
                       <span className={player ? 'font-bold' : 'text-muted-foreground italic'}>
                         {player ? player.name : 'ממתין...'}
-                        {isMe && <span className="text-xs text-purple-400 mr-1"> (אתה)</span>}
+                        {isMe && <span className="text-xs text-emerald-400 mr-1"> (אתה)</span>}
                       </span>
                       {player && i === 0 && <span className="text-[10px] text-amber-400">מארח</span>}
                     </div>
@@ -152,7 +152,7 @@ export default function OnlineLobbyPage() {
               {lobbyState.players.length < 3 ? (
                 <p className="text-sm text-muted-foreground animate-pulse">ממתין לשחקנים נוספים... ({lobbyState.players.length}/3)</p>
               ) : (
-                <p className="text-sm text-purple-400 animate-pulse">ממתין שהמארח יתחיל את המשחק...</p>
+                <p className="text-sm text-emerald-400 animate-pulse">ממתין שהמארח יתחיל את המשחק...</p>
               )}
             </div>
           )}
@@ -202,7 +202,7 @@ export default function OnlineLobbyPage() {
   if (mode === 'create') {
     return (
       <div className="flex flex-col items-center justify-center min-h-[100dvh] p-6 relative overflow-hidden">
-        <div className="absolute bottom-[-10%] left-[-10%] w-[300px] h-[300px] rounded-full bg-purple-600/10 blur-[100px] pointer-events-none" />
+        <div className="absolute bottom-[-10%] left-[-10%] w-[300px] h-[300px] rounded-full bg-emerald-600/8 blur-[100px] pointer-events-none" />
 
         <h1 className="text-2xl font-bold mb-6 text-gradient-primary">צור חדר חדש</h1>
         <div className="w-full max-w-sm space-y-4 mb-6">
@@ -213,7 +213,7 @@ export default function OnlineLobbyPage() {
               value={hostName}
               onChange={(e) => setHostName(e.target.value)}
               placeholder="הזן שם"
-              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-purple-500/50 text-lg transition-colors"
+              className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-emerald-500/40 text-lg transition-colors"
               maxLength={20}
             />
           </div>
@@ -249,7 +249,7 @@ export default function OnlineLobbyPage() {
             value={inputRoomCode}
             onChange={(e) => setInputRoomCode(e.target.value.toUpperCase())}
             placeholder="ABCDEF"
-            className="w-full px-4 py-4 rounded-xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-purple-500/50 text-3xl text-center tracking-[0.3em] font-mono transition-colors"
+            className="w-full px-4 py-4 rounded-xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted-foreground/30 focus:outline-none focus:border-emerald-500/40 text-3xl text-center tracking-[0.3em] font-mono transition-colors"
             maxLength={6}
           />
         </div>
@@ -260,7 +260,7 @@ export default function OnlineLobbyPage() {
             value={playerName}
             onChange={(e) => setPlayerName(e.target.value)}
             placeholder="הזן שם"
-            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-purple-500/50 text-lg transition-colors"
+            className="w-full px-4 py-3 rounded-xl bg-white/5 border border-white/10 text-foreground placeholder:text-muted-foreground/40 focus:outline-none focus:border-emerald-500/40 text-lg transition-colors"
             maxLength={20}
           />
         </div>

@@ -19,8 +19,8 @@ export function GameOverScreen() {
 
   return (
     <div className="flex flex-col items-center flex-1 p-4 pb-24 text-center animate-scale-in relative overflow-y-auto">
-      <div className="absolute top-[15%] left-[30%] w-[300px] h-[300px] rounded-full bg-amber-500/10 blur-[120px] pointer-events-none animate-pulse-soft" />
-      <div className="absolute bottom-[20%] right-[20%] w-[200px] h-[200px] rounded-full bg-purple-600/10 blur-[100px] pointer-events-none" />
+      <div className="absolute top-[15%] left-[30%] w-[300px] h-[300px] rounded-full bg-amber-500/8 blur-[120px] pointer-events-none animate-pulse-soft" />
+      <div className="absolute bottom-[20%] right-[20%] w-[200px] h-[200px] rounded-full bg-emerald-600/8 blur-[100px] pointer-events-none" />
 
       <div className="text-7xl mb-4 animate-float">{winnerIsHuman ? '🏆' : '🤖'}</div>
       <h2 className="text-3xl font-black text-gradient-gold mb-2">המשחק נגמר!</h2>

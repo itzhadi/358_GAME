@@ -5,12 +5,12 @@ import { PlayingCard } from './PlayingCard';
 import { cn } from '@/lib/utils';
 
 const AVATAR_COLORS = [
-  ['from-violet-500', 'to-fuchsia-500'],
-  ['from-blue-500', 'to-cyan-500'],
   ['from-emerald-500', 'to-teal-500'],
+  ['from-cyan-500', 'to-blue-500'],
+  ['from-violet-500', 'to-purple-500'],
   ['from-amber-500', 'to-orange-500'],
   ['from-rose-500', 'to-pink-500'],
-  ['from-indigo-500', 'to-purple-500'],
+  ['from-indigo-500', 'to-sky-500'],
 ];
 
 const AVATAR_ICONS = ['♔', '♕', '♖', '♗', '♘', '♙', '⚜', '✦', '◆', '★', '⬟', '⎔'];
@@ -65,12 +65,12 @@ export function AIPlayerPanel({
     return (
       <div className={cn(
         'flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all',
-        isActive ? 'bg-purple-500/10 ring-1 ring-purple-500/30' : 'bg-white/5',
+        isActive ? 'bg-emerald-500/8 ring-1 ring-emerald-500/20' : 'bg-white/[0.03]',
       )}>
         <div className={cn(
           'relative w-8 h-8 rounded-full overflow-hidden border-2 shrink-0',
           `bg-gradient-to-br ${avatar.colors[0]} ${avatar.colors[1]}`,
-          isActive ? 'border-purple-400' : 'border-white/20',
+          isActive ? 'border-emerald-400' : 'border-white/15',
           isThinking && 'border-amber-400',
         )}>
           <div className="w-full h-full flex items-center justify-center text-sm text-white/90">
@@ -89,7 +89,7 @@ export function AIPlayerPanel({
         <div className="text-right">
           <p className={cn(
             'text-[10px] font-bold truncate max-w-[60px]',
-            isActive ? 'text-purple-300' : 'text-slate-300',
+            isActive ? 'text-emerald-300' : 'text-slate-300',
           )}>
             {isAI && '🤖 '}{name}
           </p>
@@ -109,14 +109,13 @@ export function AIPlayerPanel({
       'flex flex-col items-center gap-1.5 w-[90px] sm:w-[100px] transition-all',
       isActive && 'scale-105',
     )}>
-      {/* Avatar */}
       <div className={cn(
         'relative w-14 h-14 sm:w-16 sm:h-16 rounded-full overflow-hidden border-2 transition-all',
         `bg-gradient-to-br ${avatar.colors[0]} ${avatar.colors[1]}`,
         isActive
-          ? 'border-purple-400 shadow-[0_0_15px_rgba(168,85,247,0.4)]'
-          : 'border-white/20',
-        isThinking && 'border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.3)]',
+          ? 'border-emerald-400 shadow-[0_0_15px_rgba(52,211,153,0.3)]'
+          : 'border-white/15',
+        isThinking && 'border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.25)]',
       )}>
         <div className="w-full h-full flex items-center justify-center text-2xl sm:text-3xl text-white/90 drop-shadow-md">
           {avatar.icon}
@@ -132,11 +131,10 @@ export function AIPlayerPanel({
         )}
       </div>
 
-      {/* Name + score */}
       <div className="text-center">
         <p className={cn(
           'text-xs font-bold truncate max-w-[80px]',
-          isActive ? 'text-purple-300' : 'text-slate-300',
+          isActive ? 'text-emerald-300' : 'text-slate-300',
         )}>
           {isAI && '🤖 '}{name}
         </p>
@@ -148,7 +146,6 @@ export function AIPlayerPanel({
         </p>
       </div>
 
-      {/* Face-down cards */}
       <div className="relative h-10 w-16 sm:w-20">
         {Array.from({ length: Math.min(cardCount, 8) }).map((_, i) => {
           const totalCards = Math.min(cardCount, 8);
@@ -180,7 +177,6 @@ export function AIPlayerPanel({
         )}
       </div>
 
-      {/* Trick piles */}
       {tricksTaken > 0 && (
         <div className="flex flex-wrap justify-center gap-1 mt-0.5">
           {Array.from({ length: tricksTaken }).map((_, i) => {
@@ -192,7 +188,7 @@ export function AIPlayerPanel({
                     key={c}
                     className={cn(
                       'absolute rounded-[2px] border',
-                      isExtra ? 'border-amber-400/40' : 'border-white/10',
+                      isExtra ? 'border-amber-400/40' : 'border-white/8',
                     )}
                     style={{
                       width: '100%',
@@ -200,10 +196,10 @@ export function AIPlayerPanel({
                       top: `${-c * 1.5}px`,
                       left: `${c * 0.5}px`,
                       background: isExtra
-                        ? 'linear-gradient(135deg, hsl(45, 80%, 30%), hsl(35, 70%, 22%))'
-                        : 'linear-gradient(135deg, hsl(230, 25%, 22%), hsl(230, 20%, 16%))',
+                        ? 'linear-gradient(135deg, hsl(42, 75%, 30%), hsl(32, 65%, 22%))'
+                        : 'linear-gradient(135deg, hsl(228, 22%, 20%), hsl(228, 18%, 14%))',
                       zIndex: c,
-                      boxShadow: isExtra ? '0 0 6px rgba(251, 191, 36, 0.3)' : 'none',
+                      boxShadow: isExtra ? '0 0 6px rgba(251, 191, 36, 0.25)' : 'none',
                     }}
                   />
                 ))}

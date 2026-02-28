@@ -19,13 +19,13 @@ export function DealScreen() {
 
   const targetColors: Record<number, string> = {
     8: 'from-amber-500 to-orange-500',
-    5: 'from-purple-500 to-blue-500',
-    3: 'from-cyan-500 to-teal-500',
+    5: 'from-emerald-500 to-teal-500',
+    3: 'from-cyan-500 to-blue-500',
   };
 
   return (
     <div className="flex flex-col items-center justify-center flex-1 p-4 text-center animate-scale-in relative">
-      <div className="absolute top-[10%] right-[-5%] w-[250px] h-[250px] rounded-full bg-purple-600/10 blur-[100px] pointer-events-none" />
+      <div className="absolute top-[10%] right-[-5%] w-[250px] h-[250px] rounded-full bg-emerald-600/8 blur-[100px] pointer-events-none" />
 
       <div className="text-5xl mb-3 animate-float">🎴</div>
       <h2 className="text-2xl font-black text-gradient-primary mb-1">
@@ -36,7 +36,7 @@ export function DealScreen() {
       <div className="glass rounded-3xl p-5 mb-8 w-full max-w-sm">
         <div className="space-y-3">
           {players.map((p, i) => {
-            const isDealer = i === dealerIndex;
+            const isPlayerDealer = i === dealerIndex;
             const target = targets[i];
             const startsFirst = target === 5;
             const isAI = aiSeats.has(i);
@@ -46,21 +46,21 @@ export function DealScreen() {
               <div
                 key={p.id}
                 className={`flex justify-between items-center py-3 px-4 rounded-2xl transition-all ${
-                  isDealer ? 'glass-strong glow-primary' : isMe ? 'glass-strong ring-1 ring-purple-500/30' : 'glass-card'
+                  isPlayerDealer ? 'glass-strong glow-primary' : isMe ? 'glass-strong ring-1 ring-emerald-500/20' : 'glass-card'
                 }`}
               >
                 <div className="flex items-center gap-2">
                   <span className="text-lg">{isAI ? '🤖' : '👤'}</span>
                   <span className="font-bold text-base">{p.name}</span>
-                  {isMe && <span className="text-[10px] text-purple-400">(אתה)</span>}
+                  {isMe && <span className="text-[10px] text-emerald-400">(אתה)</span>}
                   <div className="flex gap-1">
-                    {isDealer && (
-                      <span className="text-[10px] bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full font-semibold">
+                    {isPlayerDealer && (
+                      <span className="text-[10px] bg-amber-500/15 text-amber-400 px-2 py-0.5 rounded-full font-semibold">
                         דילר
                       </span>
                     )}
                     {startsFirst && (
-                      <span className="text-[10px] bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded-full font-semibold">
+                      <span className="text-[10px] bg-emerald-500/15 text-emerald-400 px-2 py-0.5 rounded-full font-semibold">
                         מתחיל
                       </span>
                     )}
@@ -76,7 +76,7 @@ export function DealScreen() {
 
         <div className="mt-4 pt-3 border-t border-white/5">
           <p className="text-xs text-muted-foreground">
-            <span className="text-purple-400">★</span> השחקן עם יעד 5 מתחיל את הלקיחה הראשונה
+            <span className="text-emerald-400">★</span> השחקן עם יעד 5 מתחיל את הלקיחה הראשונה
           </p>
         </div>
       </div>

@@ -11,11 +11,10 @@ export function PrivacyScreen() {
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-6 text-center relative overflow-hidden"
-      style={{ background: 'radial-gradient(ellipse at 50% 40%, hsla(265, 40%, 15%, 1) 0%, hsl(230, 25%, 7%) 70%)' }}>
+      style={{ background: 'radial-gradient(ellipse at 50% 40%, hsla(160, 30%, 10%, 1) 0%, hsl(228, 20%, 6%) 70%)' }}>
 
-      {/* Animated orbs */}
-      <div className="absolute top-[20%] left-[20%] w-[200px] h-[200px] rounded-full bg-purple-600/15 blur-[80px] animate-pulse-soft pointer-events-none" />
-      <div className="absolute bottom-[20%] right-[20%] w-[200px] h-[200px] rounded-full bg-blue-600/15 blur-[80px] animate-pulse-soft pointer-events-none" style={{ animationDelay: '1s' }} />
+      <div className="absolute top-[20%] left-[20%] w-[200px] h-[200px] rounded-full bg-emerald-600/10 blur-[80px] animate-pulse-soft pointer-events-none" />
+      <div className="absolute bottom-[20%] right-[20%] w-[200px] h-[200px] rounded-full bg-cyan-600/10 blur-[80px] animate-pulse-soft pointer-events-none" style={{ animationDelay: '1s' }} />
 
       <div className="text-7xl mb-8 animate-float">🃏</div>
 

@@ -108,15 +108,29 @@ export const useGameStore = create<GameStore>((set, get) => ({
     socket.off('room:joined');
     socket.off('room:state');
     socket.off('room:closed');
+    socket.off('room:playerDisconnected');
+    socket.off('room:playerReconnected');
     socket.off('game:privateHand');
     socket.off('error');
 
     socket.on('connect', () => {
       set({ isConnected: true });
+      const { token, roomCode } = get();
+      if (token && roomCode) {
+        socket.emit('room:reconnect', { token });
+      }
     });
 
     socket.on('disconnect', () => {
       set({ isConnected: false });
+    });
+
+    socket.on('room:playerDisconnected', ({ playerName }: { playerName: string }) => {
+      console.log(`${playerName} disconnected temporarily`);
+    });
+
+    socket.on('room:playerReconnected', ({ playerName }: { playerName: string }) => {
+      console.log(`${playerName} reconnected`);
     });
 
     socket.on('room:created', ({ code, token, seatIndex }) => {

@@ -23,6 +23,9 @@ function verifyToken(token: string): JWTPayload | null {
   }
 }
 
+const RECONNECT_GRACE_MS = 45_000;
+const disconnectTimers = new Map<string, NodeJS.Timeout>();
+
 export function setupSocketHandlers(io: SocketIOServer) {
   io.on('connection', (socket: Socket) => {
     console.log(`Socket connected: ${socket.id}`);
@@ -205,30 +208,47 @@ export function setupSocketHandlers(io: SocketIOServer) {
       roomManager.removeRoom(payload.roomCode);
     });
 
-    // Disconnect handling
     socket.on('disconnect', () => {
       const result = roomManager.disconnectPlayer(socket.id);
-      if (result) {
-        const room = roomManager.getRoom(result.code);
-        if (room) {
+      if (!result) return;
+
+      const room = roomManager.getRoom(result.code);
+      if (!room) return;
+
+      io.to(result.code).emit('room:playerDisconnected', {
+        playerName: result.player.name,
+        seatIndex: result.player.seatIndex,
+      });
+      io.to(result.code).emit('room:state', {
+        code: room.code,
+        name: room.name,
+        players: room.players.map((p) => ({ name: p.name, seatIndex: p.seatIndex, connected: p.connected })),
+        status: room.status,
+      });
+
+      const timerKey = `${result.code}:${result.player.id}`;
+      const timer = setTimeout(() => {
+        disconnectTimers.delete(timerKey);
+        const currentRoom = roomManager.getRoom(result.code);
+        if (!currentRoom) return;
+
+        const player = currentRoom.players.find((p) => p.id === result.player.id);
+        if (player && !player.connected) {
           io.to(result.code).emit('room:closed', {
             reason: `${result.player.name} התנתק/ה מהחדר`,
           });
-
-          // Disconnect all sockets from the room
-          for (const p of room.players) {
+          for (const p of currentRoom.players) {
             if (p.socketId) {
-              const pSocket = io.sockets.sockets.get(p.socketId);
-              pSocket?.leave(result.code);
+              io.sockets.sockets.get(p.socketId)?.leave(result.code);
             }
           }
-
           roomManager.removeRoom(result.code);
         }
-      }
+      }, RECONNECT_GRACE_MS);
+
+      disconnectTimers.set(timerKey, timer);
     });
 
-    // Reconnection
     socket.on('room:reconnect', (data: { token: string }) => {
       const payload = verifyToken(data.token);
       if (!payload) {
@@ -242,19 +262,32 @@ export function setupSocketHandlers(io: SocketIOServer) {
         return;
       }
 
-      socket.join(payload.roomCode);
-
-      const view = roomManager.getPlayerView(payload.roomCode, payload.seatIndex);
-      if (view) {
-        socket.emit('game:privateHand', view);
+      const timerKey = `${payload.roomCode}:${payload.playerId}`;
+      const pending = disconnectTimers.get(timerKey);
+      if (pending) {
+        clearTimeout(pending);
+        disconnectTimers.delete(timerKey);
       }
+
+      socket.join(payload.roomCode);
 
       const room = roomManager.getRoom(payload.roomCode);
       if (room) {
+        socket.emit('room:state', {
+          code: room.code,
+          name: room.name,
+          players: room.players.map((p) => ({ name: p.name, seatIndex: p.seatIndex, connected: p.connected })),
+          status: room.status,
+        });
         io.to(payload.roomCode).emit('room:playerReconnected', {
           playerName: player.name,
           seatIndex: player.seatIndex,
         });
+      }
+
+      const view = roomManager.getPlayerView(payload.roomCode, payload.seatIndex);
+      if (view) {
+        socket.emit('game:privateHand', view);
       }
     });
   });
