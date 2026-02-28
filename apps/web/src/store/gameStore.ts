@@ -66,7 +66,7 @@ interface GameStore {
 
 let reshuffleNotifTimer: ReturnType<typeof setTimeout> | null = null;
 
-function showReshuffleNotif(setFn: typeof set, msg: string, duration: number) {
+function showReshuffleNotif(setFn: (state: Partial<GameStore>) => void, msg: string, duration: number) {
   if (reshuffleNotifTimer) clearTimeout(reshuffleNotifTimer);
   setFn({ reshuffleNotification: msg });
   reshuffleNotifTimer = setTimeout(() => {
