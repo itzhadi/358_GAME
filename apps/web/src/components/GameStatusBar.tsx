@@ -20,7 +20,7 @@ export function GameStatusBar({ gameState, aiSeats }: GameStatusBarProps) {
 
   return (
     <div className="w-full glass-strong border-b border-white/8 z-30 relative">
-      <div className="grid grid-cols-[1fr_auto_auto] items-center px-2.5 py-2 text-xs gap-1.5">
+      <div className="grid grid-cols-[1fr_auto_auto] items-center pl-14 pr-2.5 py-2 text-xs gap-1.5">
         <div className="flex items-center gap-2.5 overflow-hidden">
           <span className="text-muted-foreground font-medium shrink-0">יד {Math.max(handNumber, 1)}</span>
           {showCutter && (

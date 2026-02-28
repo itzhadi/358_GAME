@@ -117,7 +117,6 @@ export function ReshuffleScreen() {
         <div className="mb-5 w-full max-w-md">
           <PlayerHand
             cards={myHand}
-            disabled
           />
         </div>
       )}
