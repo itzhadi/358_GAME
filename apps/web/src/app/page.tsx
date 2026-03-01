@@ -75,18 +75,17 @@ export default function HomePage() {
       {/* Buttons */}
       <div className="w-full max-w-sm flex flex-col gap-3.5 relative z-10">
         <Button size="lg" variant="glow" className="w-full text-lg h-16 rounded-2xl" onClick={() => router.push('/local/vs-computer')}>
-          <span className="ml-2">🤖</span> נגד המחשב
+          שחק סולו
         </Button>
 
         <Button size="lg" variant="outline" className="w-full text-lg h-16 rounded-2xl" onClick={() => router.push('/online')}>
-          <span className="ml-2">👥</span> שחק עם חברים
+          שחק עם חברים
         </Button>
 
         <button
           onClick={() => router.push('/rules')}
           className="w-full h-12 rounded-2xl text-base font-medium text-muted-foreground hover:text-foreground transition-all active:scale-[0.97] flex items-center justify-center gap-2"
         >
-          <span className="text-lg">📖</span>
           חוקי המשחק
         </button>
       </div>

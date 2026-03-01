@@ -2,6 +2,7 @@
 
 import { Button } from '@/components/ui/button';
 import { useGameStore } from '@/store/gameStore';
+import BotIcon from '@/components/BotIcon';
 
 export function DealScreen() {
   const { gameState, dispatch, aiSeats, mode, playerSeat } = useGameStore();
@@ -11,7 +12,8 @@ export function DealScreen() {
   const hasAI = aiSeats.size > 0;
   const isOnline = mode === 'online';
   const isDealer = isOnline && playerSeat === dealerIndex;
-  const canDeal = !isOnline || isDealer;
+  const dealerIsAI = isOnline && aiSeats.has(dealerIndex);
+  const canDeal = !isOnline || isDealer || dealerIsAI;
 
   const handleDeal = () => {
     dispatch({ type: 'SHUFFLE_DEAL' });
@@ -50,7 +52,7 @@ export function DealScreen() {
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-lg">{isAI ? '🤖' : '👤'}</span>
+                  <span className="text-lg">{isAI ? <BotIcon size={20} /> : '👤'}</span>
                   <span className="font-bold text-base">{p.name}</span>
                   {isMe && <span className="text-[10px] text-emerald-400">(אתה)</span>}
                   <div className="flex gap-1">
@@ -83,7 +85,7 @@ export function DealScreen() {
 
       {canDeal ? (
         <Button size="lg" variant="glow" onClick={handleDeal} className="text-lg px-12 rounded-2xl">
-          חלק קלפים 🎴
+          חלק קלפים
         </Button>
       ) : (
         <p className="text-sm text-muted-foreground animate-pulse">ממתין שהדילר יחלק קלפים...</p>

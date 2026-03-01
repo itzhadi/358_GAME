@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { Suit, SUITS, aiPickCutter } from '@358/shared';
-import { Button } from '@/components/ui/button';
 import { PlayerHand } from '@/components/PlayerHand';
 import { useGameStore } from '@/store/gameStore';
 import { cn } from '@/lib/utils';
+import BotIcon from '@/components/BotIcon';
 
 const SUIT_DISPLAY: Record<Suit, { symbol: string; name: string; color: string }> = {
   S: { symbol: '♠', name: 'עלה', color: 'text-slate-300' },
@@ -15,7 +15,7 @@ const SUIT_DISPLAY: Record<Suit, { symbol: string; name: string; color: string }
 };
 
 export function CutterPickScreen() {
-  const { gameState, dispatch, activePlayerSeat, aiSeats, mode } = useGameStore();
+  const { gameState, dispatch, activePlayerSeat, aiSeats, mode, playerSeat } = useGameStore();
   const [revealStage, setRevealStage] = useState<'thinking' | 'reveal'>('thinking');
   const [chosenSuit, setChosenSuit] = useState<Suit | null>(null);
 
@@ -26,7 +26,7 @@ export function CutterPickScreen() {
 
   const didReveal = useRef(false);
   useEffect(() => {
-    if (!isAiDealer || !gameState || didReveal.current) return;
+    if (!isAiDealer || !gameState || didReveal.current || isOnline) return;
     didReveal.current = true;
     const dealerHand = gameState.playerHands[dealerSeat];
     const suit = aiPickCutter(dealerHand);
@@ -41,22 +41,22 @@ export function CutterPickScreen() {
       clearTimeout(dispatchTimer);
       didReveal.current = false;
     };
-  }, [isAiDealer, dealerSeat, gameState, dispatch]);
+  }, [isAiDealer, dealerSeat, gameState, dispatch, isOnline]);
 
   if (!gameState) return null;
 
   const dealer = gameState.players[dealerSeat];
-  const humanSeat = hasAI ? 0 : activePlayerSeat;
+  const humanSeat = isOnline ? (playerSeat ?? 0) : (hasAI ? 0 : activePlayerSeat);
   const hand = gameState.playerHands[humanSeat];
   const isMyTurn = dealerSeat === humanSeat;
 
-  if (isAiDealer) {
+  if (isAiDealer && !isOnline) {
     const sd = chosenSuit ? SUIT_DISPLAY[chosenSuit] : null;
     return (
       <div className="flex flex-col items-center justify-center flex-1 p-4 text-center relative overflow-hidden">
         <div className="absolute top-[15%] left-[20%] w-[250px] h-[250px] rounded-full bg-amber-500/8 blur-[100px] pointer-events-none" />
 
-        <div className="text-5xl mb-4 animate-float">🤖</div>
+        <div className="mb-4 animate-float"><BotIcon size={56} /></div>
         <h2 className="text-2xl font-black text-gradient-primary mb-2">{dealer.name}</h2>
 
         {revealStage === 'thinking' ? (
@@ -88,12 +88,38 @@ export function CutterPickScreen() {
   }
 
   if (isOnline && !isMyTurn) {
+    const revealedSuit = gameState.cutterSuit;
+    const rd = revealedSuit ? SUIT_DISPLAY[revealedSuit] : null;
     return (
       <div className="flex flex-col flex-1 min-h-0">
         <div className="flex-1 flex flex-col items-center justify-center p-4 text-center">
-          <div className="text-5xl mb-4 animate-float">🎯</div>
-          <h2 className="text-xl font-bold mb-2">{dealer.name} בוחר חותך...</h2>
-          <p className="text-muted-foreground text-sm animate-pulse">ממתין...</p>
+          {rd ? (
+            <div className="animate-scale-in">
+              <div className="text-5xl mb-4">{isAiDealer ? <BotIcon size={56} /> : '🎯'}</div>
+              <h2 className="text-xl font-bold mb-2">{dealer.name}</h2>
+              <p className="text-amber-400 text-sm font-bold mb-4">הכריז על החותך!</p>
+              <div className="glass rounded-3xl p-8 glow-primary">
+                <div className={`text-7xl mb-2 ${rd.color}`}>{rd.symbol}</div>
+                <div className="text-xl font-black">{rd.name}</div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="text-5xl mb-4 animate-float">{isAiDealer ? <BotIcon size={56} /> : '🎯'}</div>
+              <h2 className="text-xl font-bold mb-2">{dealer.name} בוחר חותך...</h2>
+              {isAiDealer ? (
+                <div className="flex gap-3 justify-center mt-4">
+                  {SUITS.map((s, i) => (
+                    <div key={s} className="text-3xl animate-pulse opacity-40" style={{ animationDelay: `${i * 150}ms` }}>
+                      {SUIT_DISPLAY[s].symbol}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-muted-foreground text-sm animate-pulse">ממתין...</p>
+              )}
+            </>
+          )}
         </div>
         <div className="glass-strong pb-4 pt-2">
           <div className="text-center text-xs text-muted-foreground mb-1">הקלפים שלך</div>

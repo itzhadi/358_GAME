@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { PlayingCard } from '@/components/PlayingCard';
 import { useGameStore } from '@/store/gameStore';
+import BotIcon from '@/components/BotIcon';
 
 export function ReceivedCardsScreen() {
   const { gameState, dismissReceivedCards, aiSeats, activePlayerSeat, mode, playerSeat } = useGameStore();
@@ -76,7 +77,7 @@ export function ReceivedCardsScreen() {
             <div key={fromSeat} className="mb-3 last:mb-0">
               <p className="text-xs text-muted-foreground mb-2">
                 מ<span className="font-bold text-emerald-400">{players[fromSeat].name}</span>
-                {hasAI && aiSeats.has(fromSeat) && ' 🤖'}:
+                {hasAI && aiSeats.has(fromSeat) && <>{' '}<BotIcon size={14} /></>}:
               </p>
               <div className="flex justify-center gap-3">
                 {cards.map((r) => (

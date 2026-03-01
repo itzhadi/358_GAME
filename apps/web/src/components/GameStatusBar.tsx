@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { GameState } from '@358/shared';
 import { SuitIcon } from './PlayingCard';
 import { cn } from '@/lib/utils';
+import BotIcon from '@/components/BotIcon';
 
 interface GameStatusBarProps {
   gameState: GameState;
@@ -117,7 +118,7 @@ export function GameStatusBar({ gameState, aiSeats }: GameStatusBarProps) {
                   )}
                 >
                   <div className="flex items-center gap-1.5 font-bold truncate">
-                    <span className="text-xs">{isAI ? '🤖' : '👤'}</span>
+                    <span className="text-xs">{isAI ? <BotIcon size={14} /> : '👤'}</span>
                     <span className="truncate">{p.name}</span>
                     {isActive && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
                   </div>

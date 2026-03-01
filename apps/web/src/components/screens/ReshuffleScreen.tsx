@@ -113,13 +113,9 @@ export function ReshuffleScreen() {
         </p>
       )}
 
-      {(myTurn || iVotedOnline35) && (
-        <div className="mb-5 w-full max-w-md">
-          <PlayerHand
-            cards={myHand}
-          />
-        </div>
-      )}
+      <div className="mb-5 w-full max-w-md">
+        <PlayerHand cards={myHand} />
+      </div>
 
       {(owedToMe.length > 0 || iOwe.length > 0) && (
         <div className="glass rounded-2xl px-4 py-3 mb-4 text-sm max-w-sm w-full">
@@ -141,7 +137,7 @@ export function ReshuffleScreen() {
       {showButtons ? (
         <div className="flex gap-3">
           <Button size="lg" variant="glow" onClick={handleAccept} className="text-base px-8 rounded-2xl">
-            🔄 חלוקה מחדש
+            חלוקה מחדש
           </Button>
           <Button size="lg" variant="outline" onClick={handleDecline} className="text-base px-8 rounded-2xl">
             המשך ▶

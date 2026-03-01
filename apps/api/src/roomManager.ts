@@ -13,6 +13,8 @@ export interface Room {
   code: string;
   name: string;
   victoryTarget: number;
+  maxPlayers: 2 | 3;
+  aiSeat: number | null;
   status: 'waiting' | 'playing' | 'finished';
   players: RoomPlayer[];
   gameState: GameState | null;
@@ -32,12 +34,14 @@ class RoomManager {
     return code;
   }
 
-  createRoom(name: string, hostName: string, victoryTarget: number, hostSocketId: string): Room {
+  createRoom(name: string, hostName: string, victoryTarget: number, hostSocketId: string, maxPlayers: 2 | 3 = 3): Room {
     const code = this.generateCode();
     const room: Room = {
       code,
       name,
       victoryTarget,
+      maxPlayers,
+      aiSeat: null,
       status: 'waiting',
       players: [{
         id: `p-${Date.now()}-0`,
@@ -61,7 +65,7 @@ class RoomManager {
     const room = this.rooms.get(code.toUpperCase());
     if (!room) return { error: 'חדר לא נמצא — בדוק את הקוד' };
     if (room.status !== 'waiting') return { error: 'המשחק כבר התחיל' };
-    if (room.players.length >= 3) return { error: 'החדר מלא (3 שחקנים)' };
+    if (room.players.length >= room.maxPlayers) return { error: 'החדר מלא' };
 
     const seatIndex = room.players.length;
     const player: RoomPlayer = {
@@ -78,7 +82,28 @@ class RoomManager {
 
   startGame(code: string): GameState | null {
     const room = this.rooms.get(code);
-    if (!room || room.players.length !== 3 || room.status !== 'waiting') return null;
+    if (!room || room.status !== 'waiting') return null;
+    if (room.players.length < room.maxPlayers) return null;
+
+    if (room.maxPlayers === 2 && room.players.length === 2) {
+      const AI_NAMES = [
+        'יוסי', 'דני', 'אבי', 'משה', 'דוד', 'רון', 'גיל', 'איתי',
+        'נועם', 'עידו', 'תומר', 'אורי', 'שי', 'עומר', 'ליאור', 'אלון',
+      ];
+      const usedNames = new Set(room.players.map((p) => p.name));
+      const available = AI_NAMES.filter((n) => !usedNames.has(n));
+      const aiName = available[Math.floor(Math.random() * available.length)] ?? 'מחשב';
+
+      room.players.push({
+        id: `ai-${Date.now()}-2`,
+        name: aiName,
+        seatIndex: 2,
+        socketId: null,
+        connected: true,
+        isHost: false,
+      });
+      room.aiSeat = 2;
+    }
 
     room.status = 'playing';
     const state = createGame({

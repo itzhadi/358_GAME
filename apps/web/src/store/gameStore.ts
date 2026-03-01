@@ -25,6 +25,8 @@ interface GameStore {
 
   lobbyState: {
     code: string;
+    maxPlayers?: 2 | 3;
+    aiSeat?: number | null;
     players: { name: string; seatIndex: number; connected: boolean }[];
     status: string;
   } | null;
@@ -44,7 +46,7 @@ interface GameStore {
   // Actions
   startLocalGame: (players: { id: string; name: string }[], victoryTarget: number, aiSeats?: number[]) => void;
   connectSocket: () => void;
-  createRoom: (hostName: string, victoryTarget: number) => Promise<void>;
+  createRoom: (hostName: string, victoryTarget: number, maxPlayers?: 2 | 3) => Promise<void>;
   joinRoom: (roomCode: string, playerName: string) => Promise<void>;
   startOnlineGame: () => void;
   leaveRoom: () => void;
@@ -65,6 +67,8 @@ interface GameStore {
 }
 
 let reshuffleNotifTimer: ReturnType<typeof setTimeout> | null = null;
+let trickDisplayTimer: ReturnType<typeof setTimeout> | null = null;
+let cutterRevealTimer: ReturnType<typeof setTimeout> | null = null;
 
 function showReshuffleNotif(setFn: (state: Partial<GameStore>) => void, msg: string, duration: number) {
   if (reshuffleNotifTimer) clearTimeout(reshuffleNotifTimer);
@@ -186,6 +190,24 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const prevState = prev.gameState;
       const mySeat = prev.playerSeat ?? 0;
 
+      if (!prevState && prev.lobbyState?.aiSeat != null) {
+        set({ aiSeats: new Set([prev.lobbyState.aiSeat]) });
+      }
+
+      // If a cutter reveal timer is pending and new state arrives, cancel it and use latest
+      if (cutterRevealTimer) {
+        clearTimeout(cutterRevealTimer);
+        cutterRevealTimer = null;
+      }
+
+      // If a trick display timer is pending and new state arrives, cancel it and apply both
+      if (trickDisplayTimer && prev.pendingTrickState) {
+        clearTimeout(trickDisplayTimer);
+        trickDisplayTimer = null;
+        set({ gameState: newState, showTrickResult: true, pendingTrickState: null });
+        return;
+      }
+
       // Detect exchange cards returned TO me (I was the giver, someone returned cards to me)
       if (prevState?.exchangeInfo && newState.exchangeInfo) {
         const prevReturnedToMe = prevState.exchangeInfo.returnedCards.filter(r => r.toSeat === mySeat).length;
@@ -209,6 +231,30 @@ export const useGameStore = create<GameStore>((set, get) => ({
         }
       }
 
+      // AI picked cutter — show reveal briefly before moving on
+      // Guard: currentPlayerIndex !== -1 prevents re-triggering from a displayState
+      if (
+        prevState?.phase === 'CUTTER_PICK' &&
+        prevState.currentPlayerIndex !== -1 &&
+        newState.phase !== 'CUTTER_PICK' &&
+        newState.cutterSuit &&
+        prev.aiSeats.size > 0 &&
+        prev.aiSeats.has(newState.dealerIndex)
+      ) {
+        const displayState: GameState = {
+          ...prevState,
+          cutterSuit: newState.cutterSuit,
+          phase: 'CUTTER_PICK',
+          currentPlayerIndex: -1,
+        };
+        set({ gameState: displayState });
+        cutterRevealTimer = setTimeout(() => {
+          cutterRevealTimer = null;
+          set({ gameState: newState });
+        }, 1800);
+        return;
+      }
+
       // Show kupa cards to dealer after discarding in online mode
       if (
         prevState?.phase === 'DEALER_DISCARD' &&
@@ -217,6 +263,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
         newState.dealerReceivedKupa.length > 0
       ) {
         set({ gameState: newState, showDealerKupa: true });
+        return;
+      }
+
+      // Show dealer returns screen when transitioning from exchange to cutter pick
+      if (
+        prevState?.phase === 'EXCHANGE_RETURN' &&
+        (newState.phase === 'CUTTER_PICK' || newState.phase === 'TRICK_PLAY') &&
+        mySeat === newState.dealerIndex &&
+        (newState.dealerHiddenReturns.length > 0 || newState.dealerPendingReceived.length > 0)
+      ) {
+        set({ gameState: newState, showDealerReturns: true });
         return;
       }
 
@@ -243,7 +300,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
           lastTrickWinner: completedTrick.winnerIndex,
           pendingTrickState: newState,
         });
-        setTimeout(() => {
+        trickDisplayTimer = setTimeout(() => {
+          trickDisplayTimer = null;
           set({
             gameState: newState,
             showTrickResult: true,
@@ -251,6 +309,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
           });
         }, 1200);
         return;
+      }
+
+      // Reshuffle notifications in online mode
+      if (prevState?.phase === 'RESHUFFLE_WINDOW' && newState.phase === 'RESHUFFLE_WINDOW') {
+        if (!prevState.reshuffleUsedBy8 && newState.reshuffleUsedBy8) {
+          const dealerName = newState.players[newState.dealerIndex].name;
+          showReshuffleNotif(set, `${dealerName} (8) ביקש חלוקה מחדש — הקלפים חולקו מחדש!`, 2500);
+        } else if (!prevState.reshuffleUsedBy35 && newState.reshuffleUsedBy35) {
+          showReshuffleNotif(set, `צד 3+5 ביקש חלוקה מחדש — הקלפים חולקו מחדש!`, 2500);
+        }
       }
 
       set({ gameState: newState, reshuffleVoteStatus: null, myReshuffleVote: null });
@@ -265,6 +333,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       if (message.includes('Room not found') || message.includes('Game not started')) {
         alert('החדר לא נמצא — ייתכן שהשרת אותחל מחדש. יש ליצור משחק חדש.');
         set({ gameState: null, roomCode: null, token: null, lobbyState: null });
+      } else if (message.includes("'s turn")) {
+        // Turn-order timing issue — ignore silently, state will sync
       } else {
         alert(`שגיאה: ${message}`);
       }
@@ -275,7 +345,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
   },
 
-  createRoom: async (hostName, victoryTarget) => {
+  createRoom: async (hostName, victoryTarget, maxPlayers = 3) => {
     get().connectSocket();
     if (!socket.connected) {
       try {
@@ -289,7 +359,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         return;
       }
     }
-    socket.emit('room:create', { roomName: `${hostName}'s Room`, hostName, victoryTarget });
+    socket.emit('room:create', { roomName: `${hostName}'s Room`, hostName, victoryTarget, maxPlayers });
   },
 
   joinRoom: async (roomCode, playerName) => {
@@ -353,6 +423,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           socket.emit('dealer:discard', { token, cardIds: action.payload.cardIds });
           break;
         case 'PLAY_CARD':
+          if (gameState.currentPlayerIndex !== (get().playerSeat ?? -1)) return;
           socket.emit('play:card', { token, cardId: action.payload.cardId });
           break;
         case 'NEXT_HAND':
@@ -743,6 +814,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       get().leaveRoom();
     }
     if (reshuffleNotifTimer) { clearTimeout(reshuffleNotifTimer); reshuffleNotifTimer = null; }
+    if (trickDisplayTimer) { clearTimeout(trickDisplayTimer); trickDisplayTimer = null; }
+    if (cutterRevealTimer) { clearTimeout(cutterRevealTimer); cutterRevealTimer = null; }
     set({ gameState: null, activePlayerSeat: 0, showPrivacyScreen: false, showTrickResult: false, showReceivedCards: false, showDealerKupa: false, showDealerReturns: false, pendingTrickState: null, reshuffleNotification: null, reshuffleVoteStatus: null, myReshuffleVote: null, mode: 'local', aiSeats: new Set() });
   },
 

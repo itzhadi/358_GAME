@@ -5,9 +5,10 @@ import { Button } from '@/components/ui/button';
 import { PlayerHand } from '@/components/PlayerHand';
 import { SuitIcon } from '@/components/PlayingCard';
 import { useGameStore } from '@/store/gameStore';
+import BotIcon from '@/components/BotIcon';
 
 export function DealerDiscardScreen() {
-  const { gameState, dispatch, activePlayerSeat, aiSeats, mode } = useGameStore();
+  const { gameState, dispatch, activePlayerSeat, aiSeats, mode, playerSeat } = useGameStore();
   const [selectedCards, setSelectedCards] = useState<Set<string>>(new Set());
 
   if (!gameState) return null;
@@ -16,7 +17,7 @@ export function DealerDiscardScreen() {
   const isOnline = mode === 'online';
   const dealerSeat = gameState.dealerIndex;
   const dealer = gameState.players[dealerSeat];
-  const humanSeat = hasAI ? 0 : activePlayerSeat;
+  const humanSeat = isOnline ? (playerSeat ?? 0) : (hasAI ? 0 : activePlayerSeat);
   const isMyTurn = dealerSeat === humanSeat;
   const isAiDealer = hasAI && aiSeats.has(dealerSeat);
 
@@ -27,7 +28,7 @@ export function DealerDiscardScreen() {
         <div className="flex-1 flex flex-col items-center justify-center p-4 text-center relative overflow-hidden">
           <div className="absolute bottom-[10%] right-[-5%] w-[200px] h-[200px] rounded-full bg-emerald-600/8 blur-[100px] pointer-events-none" />
 
-          {isAiDealer && <div className="text-5xl mb-4 animate-float">🤖</div>}
+          {isAiDealer && <div className="mb-4 animate-float"><BotIcon size={56} /></div>}
           <h2 className="text-xl font-bold mb-2">{dealer.name}</h2>
           {gameState.cutterSuit && (
             <div className="glass rounded-2xl px-5 py-3 flex items-center gap-2 mb-4">

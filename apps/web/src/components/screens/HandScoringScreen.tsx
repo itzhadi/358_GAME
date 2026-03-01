@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { useGameStore } from '@/store/gameStore';
 import { cn } from '@/lib/utils';
+import BotIcon from '@/components/BotIcon';
 
 export function HandScoringScreen() {
   const { gameState, dispatch, aiSeats, mode, playerSeat } = useGameStore();
@@ -11,7 +12,8 @@ export function HandScoringScreen() {
   const hasAI = aiSeats.size > 0;
   const isOnline = mode === 'online';
   const isDealer = isOnline && playerSeat === gameState.dealerIndex;
-  const canAdvance = !isOnline || isDealer;
+  const dealerIsAI = isOnline && aiSeats.has(gameState.dealerIndex);
+  const canAdvance = !isOnline || isDealer || dealerIsAI;
 
   const handleNextHand = () => {
     dispatch({ type: 'NEXT_HAND' });
@@ -37,7 +39,7 @@ export function HandScoringScreen() {
           return (
             <div key={p.id} className="grid grid-cols-4 gap-2 text-sm py-2.5 border-b border-white/5 last:border-0">
               <div className="font-bold flex items-center gap-1">
-                {isAI && <span className="text-xs">🤖</span>}
+                {isAI && <BotIcon size={14} />}
                 {p.name}
               </div>
               <div className="text-muted-foreground">{gameState.targets[i]}</div>
@@ -65,7 +67,7 @@ export function HandScoringScreen() {
             <div key={p.id} className="mb-3 last:mb-0">
               <div className="flex justify-between text-sm mb-1.5">
                 <span className="font-medium flex items-center gap-1">
-                  {isAI && <span className="text-xs">🤖</span>}
+                  {isAI && <BotIcon size={14} />}
                   {p.name}
                 </span>
                 <span className={cn(

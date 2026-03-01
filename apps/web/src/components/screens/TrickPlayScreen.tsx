@@ -5,6 +5,7 @@ import { PlayerHand } from '@/components/PlayerHand';
 import { PlayingCard, SuitIcon } from '@/components/PlayingCard';
 import { AIPlayerPanel } from '@/components/AIPlayerPanel';
 import { cn } from '@/lib/utils';
+import BotIcon from '@/components/BotIcon';
 
 function getThrowAnimation(seatIndex: number, humanSeat: number, leftSeat: number): string {
   if (seatIndex === humanSeat) return 'animate-throw-bottom';
@@ -54,7 +55,7 @@ export function TrickPlayScreen() {
           <span className="text-xs font-bold text-emerald-400 animate-pulse-soft">תורך לשחק! 🎯</span>
         ) : isAiThinking ? (
           <span className="text-xs text-muted-foreground">
-            🤖 {currentTurnPlayer?.name} חושב...
+            <BotIcon size={14} /> {currentTurnPlayer?.name} חושב...
           </span>
         ) : currentTurnPlayer ? (
           <span className="text-xs text-muted-foreground">

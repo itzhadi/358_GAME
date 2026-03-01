@@ -409,7 +409,48 @@ const slides: Slide[] = [
     ),
   },
 
-  // 11 — Tie breakers
+  // 11 — Reshuffle
+  {
+    icon: '🔄',
+    title: 'חלוקה מחדש',
+    content: (
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground text-center">
+          לא מרוצים מהקלפים? אפשר לבקש <strong className="text-amber-400">חלוקה מחדש!</strong>
+        </p>
+        <div className="glass rounded-2xl p-4 space-y-3">
+          <p className="text-sm font-bold text-purple-400 mb-1">שני צדדים יכולים לבקש:</p>
+          <div className="glass rounded-xl p-3 flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-lg font-black text-white shrink-0">8</div>
+            <div>
+              <p className="text-sm font-bold">הדילר (8)</p>
+              <p className="text-xs text-muted-foreground">מחליט לבד</p>
+            </div>
+          </div>
+          <div className="glass rounded-xl p-3 flex items-center gap-3">
+            <div className="flex gap-1 shrink-0">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-sm font-black text-white">3</div>
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center text-sm font-black text-white">5</div>
+            </div>
+            <div>
+              <p className="text-sm font-bold">צד 3+5</p>
+              <p className="text-xs text-muted-foreground">שניהם חייבים להסכים</p>
+            </div>
+          </div>
+        </div>
+        <div className="glass rounded-2xl p-4 space-y-2 border border-amber-500/20">
+          <p className="text-xs font-bold text-amber-400">איך זה עובד?</p>
+          <div className="text-xs text-muted-foreground space-y-1">
+            <p>• בתחילת כל יד, לשני הצדדים יש אופציה לבקש חלוקה מחדש</p>
+            <p>• אם צד אחד מבקש — הקלפים מחולקים מחדש</p>
+            <p>• הצד השני מקבל מיד הזדמנות לבקש גם</p>
+          </div>
+        </div>
+      </div>
+    ),
+  },
+
+  // 12 — Tie breakers
   {
     icon: '⚖️',
     title: 'שוברי שוויון',
@@ -601,7 +642,7 @@ export default function RulesPage() {
               onClick={() => router.push('/')}
               className="flex-1 rounded-2xl text-base h-14"
             >
-              🎮 התחל לשחק!
+              התחל לשחק!
             </Button>
           ) : (
             <Button

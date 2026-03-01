@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
+import BotIcon from '@/components/BotIcon';
 import { useGameStore } from '@/store/gameStore';
 
 const ISRAELI_NAMES = [
@@ -48,9 +50,11 @@ export default function VsComputerSetupPage() {
       <div className="absolute top-[-10%] left-[-10%] w-[300px] h-[300px] rounded-full bg-purple-600/10 blur-[100px] pointer-events-none" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[300px] h-[300px] rounded-full bg-blue-600/10 blur-[100px] pointer-events-none" />
 
-      <div className="text-5xl mb-3 animate-float">🤖</div>
-      <h1 className="text-3xl font-black text-gradient-primary mb-1 relative z-10">נגד המחשב</h1>
-      <p className="text-muted-foreground mb-8 relative z-10">שחק נגד 2 שחקני מחשב</p>
+      <div className="mb-3 animate-float relative z-10">
+        <Image src="/bot-avatar.png" alt="בוט" width={180} height={180} className="drop-shadow-2xl" />
+      </div>
+      <h1 className="text-3xl font-black text-gradient-primary mb-1 relative z-10">שחק סולו</h1>
+      <p className="text-muted-foreground mb-8 relative z-10">שחק נגד 2 בוטים</p>
 
       <div className="w-full max-w-sm space-y-3 mb-8 relative z-10">
         {/* Human player */}
@@ -74,14 +78,11 @@ export default function VsComputerSetupPage() {
           <div key={i} className="glass rounded-2xl p-4 bg-gradient-to-l from-slate-500/10 to-slate-600/5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-2xl">🤖</span>
-                <div>
-                  <span className="font-bold text-base">{name}</span>
-                  <span className="block text-xs text-muted-foreground">שחקן מחשב</span>
-                </div>
+                <BotIcon size={64} />
+                <span className="font-bold text-base">{name}</span>
               </div>
               <span className="text-xs glass rounded-full px-3 py-1 text-muted-foreground">
-                מחשב
+                בוט
               </span>
             </div>
           </div>
@@ -120,7 +121,7 @@ export default function VsComputerSetupPage() {
           disabled={!canStart}
           onClick={handleStart}
         >
-          התחל משחק! 🎴
+          התחל משחק!
         </Button>
         <Button
           variant="ghost"

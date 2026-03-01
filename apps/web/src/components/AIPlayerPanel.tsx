@@ -3,6 +3,7 @@
 import { Suit } from '@358/shared';
 import { PlayingCard } from './PlayingCard';
 import { cn } from '@/lib/utils';
+import BotIcon from '@/components/BotIcon';
 
 const AVATAR_COLORS = [
   ['from-emerald-500', 'to-teal-500'],
@@ -91,7 +92,7 @@ export function AIPlayerPanel({
             'text-[10px] font-bold truncate max-w-[60px]',
             isActive ? 'text-emerald-300' : 'text-slate-300',
           )}>
-            {isAI && '🤖 '}{name}
+            {isAI && <><BotIcon size={12} />{' '}</>}{name}
           </p>
           <p className={cn(
             'text-[10px] font-mono font-bold',
@@ -136,7 +137,7 @@ export function AIPlayerPanel({
           'text-xs font-bold truncate max-w-[80px]',
           isActive ? 'text-emerald-300' : 'text-slate-300',
         )}>
-          {isAI && '🤖 '}{name}
+          {isAI && <><BotIcon size={14} />{' '}</>}{name}
         </p>
         <p className={cn(
           'text-[10px] font-mono font-bold',

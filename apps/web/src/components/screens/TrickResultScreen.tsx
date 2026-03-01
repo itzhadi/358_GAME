@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { PlayingCard } from '@/components/PlayingCard';
 import { useGameStore } from '@/store/gameStore';
 import { cn } from '@/lib/utils';
+import BotIcon from '@/components/BotIcon';
 
 export function TrickResultScreen() {
   const { gameState, lastTrickWinner, dismissTrickResult, aiSeats } = useGameStore();
@@ -22,7 +23,7 @@ export function TrickResultScreen() {
       <div className="glass rounded-3xl p-6 max-w-sm w-full animate-scale-in">
         <div className="text-xs text-muted-foreground mb-2">לקיחה {lastTrick.trickNumber}/16</div>
         <h2 className="text-2xl font-black text-gradient-gold mb-5">
-          🏆 {winner.name} {hasAI && aiSeats.has(lastTrickWinner) ? '🤖' : ''}
+          🏆 {winner.name} {hasAI && aiSeats.has(lastTrickWinner) ? <BotIcon size={24} /> : ''}
         </h2>
 
         <div className="flex justify-center gap-3 mb-6">
@@ -50,7 +51,7 @@ export function TrickResultScreen() {
             return (
               <div key={p.id} className="flex items-center gap-2 text-sm">
                 <span className="font-medium w-16 text-right truncate">
-                  {p.name} {hasAI && aiSeats.has(i) ? '🤖' : ''}
+                  {p.name} {hasAI && aiSeats.has(i) ? <BotIcon size={14} /> : ''}
                 </span>
                 <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
                   <div
@@ -70,7 +71,7 @@ export function TrickResultScreen() {
         </div>
 
         <Button size="lg" variant="glow" onClick={dismissTrickResult} className="w-full rounded-2xl">
-          {gameState.phase === 'HAND_SCORING' ? 'ניקוד יד →' : gameState.phase === 'GAME_OVER' ? 'תוצאות! 🏆' : 'המשך'}
+          {gameState.phase === 'HAND_SCORING' ? 'ניקוד יד →' : gameState.phase === 'GAME_OVER' ? 'תוצאות!' : 'המשך'}
         </Button>
       </div>
     </div>

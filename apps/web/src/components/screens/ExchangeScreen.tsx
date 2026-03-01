@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { PlayingCard } from '@/components/PlayingCard';
 import { PlayerHand } from '@/components/PlayerHand';
 import { useGameStore } from '@/store/gameStore';
+import BotIcon from '@/components/BotIcon';
 
 export function ExchangeScreen() {
   const { gameState, dispatch, activePlayerSeat, aiSeats, mode, playerSeat } = useGameStore();
@@ -39,7 +40,7 @@ export function ExchangeScreen() {
         <div className="flex-1 flex flex-col items-center p-4 text-center overflow-y-auto">
           <div className="text-5xl mb-4 animate-float">🔄</div>
           <h2 className="text-xl font-bold mb-2">
-            {isAiTurn && '🤖 '}{currentPlayer.name} {isGiving ? 'נותן קלפים' : 'מחזיר קלפים'}...
+            {isAiTurn && <><BotIcon size={20} />{' '}</>}{currentPlayer.name} {isGiving ? 'נותן קלפים' : 'מחזיר קלפים'}...
           </h2>
           <p className="text-muted-foreground text-sm animate-pulse mb-4">ממתין...</p>
 
@@ -210,7 +211,7 @@ export function ExchangeScreen() {
     <div className="flex flex-col flex-1 min-h-0">
       <div className="text-center py-4 glass-strong">
         <h2 className="text-lg font-bold">
-          🔄 {isGiving ? 'תן קלפים' : 'החזר קלפים'}
+          {isGiving ? 'תן קלפים' : 'החזר קלפים'}
         </h2>
         <p className="text-sm text-muted-foreground">
           {isGiving

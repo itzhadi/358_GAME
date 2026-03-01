@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { useGameStore } from '@/store/gameStore';
 import { cn } from '@/lib/utils';
+import BotIcon from '@/components/BotIcon';
 
 export function GameOverScreen() {
   const { gameState, resetGame, aiSeats } = useGameStore();
@@ -22,12 +23,12 @@ export function GameOverScreen() {
       <div className="absolute top-[15%] left-[30%] w-[300px] h-[300px] rounded-full bg-amber-500/8 blur-[120px] pointer-events-none animate-pulse-soft" />
       <div className="absolute bottom-[20%] right-[20%] w-[200px] h-[200px] rounded-full bg-emerald-600/8 blur-[100px] pointer-events-none" />
 
-      <div className="text-7xl mb-4 animate-float">{winnerIsHuman ? '🏆' : '🤖'}</div>
+      <div className="text-7xl mb-4 animate-float">{winnerIsHuman ? '🏆' : <BotIcon size={72} />}</div>
       <h2 className="text-3xl font-black text-gradient-gold mb-2">המשחק נגמר!</h2>
 
       {winner && (
         <p className="text-2xl font-black text-gradient-primary mb-1">
-          {hasAI && aiSeats.has(gameState.winnerIndex!) ? '🤖 ' : ''}{winner.name} מנצח!
+          {hasAI && aiSeats.has(gameState.winnerIndex!) ? <><BotIcon size={24} />{' '}</> : ''}{winner.name} מנצח!
         </p>
       )}
       {winnerIsHuman && hasAI && (
@@ -51,7 +52,7 @@ export function GameOverScreen() {
           >
             <div className="flex items-center gap-3">
               <span className="text-2xl">{medals[rank]}</span>
-              {hasAI && aiSeats.has(seat) && <span>🤖</span>}
+              {hasAI && aiSeats.has(seat) && <BotIcon size={20} />}
               <span className="font-bold text-base">{player.name}</span>
             </div>
             <span className={cn(
@@ -64,7 +65,7 @@ export function GameOverScreen() {
 
       <div className="flex flex-col gap-3 w-full max-w-sm mt-4 mb-8">
         <Button size="lg" variant="accent" onClick={resetGame} className="text-lg px-12 rounded-2xl w-full">
-          משחק חדש 🎮
+          משחק חדש
         </Button>
       </div>
     </div>

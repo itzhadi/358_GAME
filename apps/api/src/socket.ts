@@ -2,6 +2,7 @@ import { Server as SocketIOServer, Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
 import { roomManager } from './roomManager.js';
 import { GameAction, Suit, getReshuffleSide } from '@358/shared';
+import { scheduleAiTurn, cancelAiTimer, aiEvaluateSide35 } from './aiRunner.js';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev-secret-358';
 
@@ -119,6 +120,21 @@ function applyAndBroadcast(io: SocketIOServer, roomCode: string, action: GameAct
       io.to(p.socketId).emit('game:privateHand', view);
     }
   }
+
+  if (room.aiSeat !== null) {
+    scheduleAiTurn(io, roomCode);
+  }
+}
+
+function roomStatePayload(room: { code: string; name: string; maxPlayers: number; aiSeat: number | null; status: string; players: { name: string; seatIndex: number; connected: boolean }[] }) {
+  return {
+    code: room.code,
+    name: room.name,
+    maxPlayers: room.maxPlayers,
+    aiSeat: room.aiSeat,
+    players: room.players.map((p) => ({ name: p.name, seatIndex: p.seatIndex, connected: p.connected })),
+    status: room.status,
+  };
 }
 
 export function setupSocketHandlers(io: SocketIOServer) {
@@ -126,19 +142,14 @@ export function setupSocketHandlers(io: SocketIOServer) {
     console.log(`Socket connected: ${socket.id}`);
 
     // Create room
-    socket.on('room:create', (data: { roomName: string; hostName: string; victoryTarget: number }) => {
+    socket.on('room:create', (data: { roomName: string; hostName: string; victoryTarget: number; maxPlayers?: 2 | 3 }) => {
       try {
-        const room = roomManager.createRoom(data.roomName, data.hostName, data.victoryTarget, socket.id);
+        const room = roomManager.createRoom(data.roomName, data.hostName, data.victoryTarget, socket.id, data.maxPlayers ?? 3);
         const token = signToken({ roomCode: room.code, playerId: room.players[0].id, seatIndex: 0 });
 
         socket.join(room.code);
         socket.emit('room:created', { code: room.code, token, seatIndex: 0 });
-        io.to(room.code).emit('room:state', {
-          code: room.code,
-          name: room.name,
-          players: room.players.map((p) => ({ name: p.name, seatIndex: p.seatIndex, connected: p.connected })),
-          status: room.status,
-        });
+        io.to(room.code).emit('room:state', roomStatePayload(room));
       } catch (err: any) {
         socket.emit('error', { code: 'CREATE_FAILED', message: err.message });
       }
@@ -158,12 +169,7 @@ export function setupSocketHandlers(io: SocketIOServer) {
 
         socket.join(room.code);
         socket.emit('room:joined', { code: room.code, token, seatIndex: player.seatIndex });
-        io.to(room.code).emit('room:state', {
-          code: room.code,
-          name: room.name,
-          players: room.players.map((p) => ({ name: p.name, seatIndex: p.seatIndex, connected: p.connected })),
-          status: room.status,
-        });
+        io.to(room.code).emit('room:state', roomStatePayload(room));
       } catch (err: any) {
         socket.emit('error', { code: 'JOIN_FAILED', message: err.message });
       }
@@ -195,11 +201,17 @@ export function setupSocketHandlers(io: SocketIOServer) {
         return;
       }
 
+      io.to(payload.roomCode).emit('room:state', roomStatePayload(room));
+
       for (const p of room.players) {
         const view = roomManager.getPlayerView(payload.roomCode, p.seatIndex);
         if (view && p.socketId) {
           io.to(p.socketId).emit('game:privateHand', view);
         }
+      }
+
+      if (room.aiSeat !== null) {
+        scheduleAiTurn(io, payload.roomCode);
       }
     });
 
@@ -225,6 +237,10 @@ export function setupSocketHandlers(io: SocketIOServer) {
         if (view && p.socketId) {
           io.to(p.socketId).emit('game:privateHand', view);
         }
+      }
+
+      if (room.aiSeat !== null) {
+        scheduleAiTurn(io, payload.roomCode);
       }
     };
 
@@ -278,12 +294,35 @@ export function setupSocketHandlers(io: SocketIOServer) {
         handleGameAction({ type: 'RESHUFFLE_ACCEPT', payload: { side: '8' } }, data.token);
         return;
       }
+      const payload = verifyToken(data.token);
+      if (!payload) return;
+      const room = roomManager.getRoom(payload.roomCode);
+      const aiIsOnSide35 = room?.aiSeat !== null && room?.aiSeat !== undefined
+        && room.gameState && getReshuffleSide(room.aiSeat, room.gameState.dealerIndex) === '35';
+      if (aiIsOnSide35) {
+        const aiWants = aiEvaluateSide35(payload.roomCode);
+        if (aiWants) {
+          handleGameAction({ type: 'RESHUFFLE_ACCEPT', payload: { side: '35' } }, data.token);
+        } else {
+          handleGameAction({ type: 'RESHUFFLE_DECLINE', payload: { side: '35' } }, data.token);
+        }
+        return;
+      }
       handleSide35Vote(io, data.token, 'accept');
     });
 
     socket.on('reshuffle:decline', (data: { token: string; side: '8' | '35' }) => {
       if (data.side === '8') {
         handleGameAction({ type: 'RESHUFFLE_DECLINE', payload: { side: '8' } }, data.token);
+        return;
+      }
+      const payload = verifyToken(data.token);
+      if (!payload) return;
+      const room = roomManager.getRoom(payload.roomCode);
+      const aiIsOnSide35 = room?.aiSeat !== null && room?.aiSeat !== undefined
+        && room.gameState && getReshuffleSide(room.aiSeat, room.gameState.dealerIndex) === '35';
+      if (aiIsOnSide35) {
+        handleGameAction({ type: 'RESHUFFLE_DECLINE', payload: { side: '35' } }, data.token);
         return;
       }
       handleSide35Vote(io, data.token, 'decline');
@@ -317,6 +356,7 @@ export function setupSocketHandlers(io: SocketIOServer) {
       }
 
       reshuffleVotes.delete(payload.roomCode);
+      cancelAiTimer(payload.roomCode);
       roomManager.removeRoom(payload.roomCode);
     });
 
@@ -331,12 +371,7 @@ export function setupSocketHandlers(io: SocketIOServer) {
         playerName: result.player.name,
         seatIndex: result.player.seatIndex,
       });
-      io.to(result.code).emit('room:state', {
-        code: room.code,
-        name: room.name,
-        players: room.players.map((p) => ({ name: p.name, seatIndex: p.seatIndex, connected: p.connected })),
-        status: room.status,
-      });
+      io.to(result.code).emit('room:state', roomStatePayload(room));
 
       const timerKey = `${result.code}:${result.player.id}`;
       const timer = setTimeout(() => {
@@ -355,6 +390,7 @@ export function setupSocketHandlers(io: SocketIOServer) {
             }
           }
           reshuffleVotes.delete(result.code);
+          cancelAiTimer(result.code);
           roomManager.removeRoom(result.code);
         }
       }, RECONNECT_GRACE_MS);
@@ -386,12 +422,7 @@ export function setupSocketHandlers(io: SocketIOServer) {
 
       const room = roomManager.getRoom(payload.roomCode);
       if (room) {
-        socket.emit('room:state', {
-          code: room.code,
-          name: room.name,
-          players: room.players.map((p) => ({ name: p.name, seatIndex: p.seatIndex, connected: p.connected })),
-          status: room.status,
-        });
+        socket.emit('room:state', roomStatePayload(room));
         io.to(payload.roomCode).emit('room:playerReconnected', {
           playerName: player.name,
           seatIndex: player.seatIndex,

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useGameStore } from '@/store/gameStore';
 import { socket } from '@/lib/socket';
+import BotIcon from '@/components/BotIcon';
 
 export default function OnlineLobbyPage() {
   const router = useRouter();
@@ -25,6 +26,7 @@ export default function OnlineLobbyPage() {
   const [inputRoomCode, setInputRoomCode] = useState('');
   const [playerName, setPlayerName] = useState('');
   const [victoryTarget, setVictoryTarget] = useState(10);
+  const [maxPlayers, setMaxPlayers] = useState<2 | 3>(3);
   const [isJoining, setIsJoining] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -43,7 +45,7 @@ export default function OnlineLobbyPage() {
 
   const handleCreate = async () => {
     setIsJoining(true);
-    await createRoom(hostName, victoryTarget);
+    await createRoom(hostName, victoryTarget, maxPlayers);
   };
 
   const handleJoin = async () => {
@@ -89,7 +91,11 @@ export default function OnlineLobbyPage() {
           {copied ? 'הועתק!' : 'לחץ להעתקת קוד החדר'}
         </p>
         <p className="text-muted-foreground text-sm mb-2">
-          {lobbyState.players.length < 3 ? 'ממתין לשחקנים...' : 'כולם מוכנים! 🎉'}
+          {(() => {
+            const needed = lobbyState.maxPlayers ?? 3;
+            const humanCount = lobbyState.players.filter((p: any) => p.seatIndex !== lobbyState.aiSeat).length;
+            return humanCount < needed ? (needed === 2 ? 'ממתין לשחקן...' : 'ממתין לשחקנים...') : 'כולם מוכנים! 🎉';
+          })()}
         </p>
         <div className="flex items-center gap-2 mb-6">
           <span className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'} animate-pulse`} />
@@ -99,27 +105,35 @@ export default function OnlineLobbyPage() {
         <div className="w-full max-w-sm glass rounded-3xl p-6 mb-8">
           <div className="space-y-3">
             {[0, 1, 2].map((i) => {
-              const player = lobbyState.players.find(p => p.seatIndex === i);
+              const isAiSlot = (lobbyState.maxPlayers === 2 || lobbyState.aiSeat !== null) && i === 2;
+              const player = lobbyState.players.find((p: any) => p.seatIndex === i);
               const isMe = i === playerSeat;
               return (
                 <div key={i} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${
-                  isMe ? 'bg-emerald-500/8 border-emerald-500/20' : 'bg-white/[0.03] border-white/5'
+                  isMe ? 'bg-emerald-500/8 border-emerald-500/20'
+                    : isAiSlot ? 'bg-blue-500/5 border-blue-500/15'
+                    : 'bg-white/[0.03] border-white/5'
                 }`}>
                   <div className="flex items-center gap-3">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${
-                      player ? 'bg-gradient-to-br from-emerald-500 to-teal-500' : 'bg-white/8'
+                      isAiSlot ? 'bg-gradient-to-br from-blue-500 to-cyan-500'
+                        : player ? 'bg-gradient-to-br from-emerald-500 to-teal-500' : 'bg-white/8'
                     }`}>
-                      {player ? (i === 0 ? '👑' : i + 1) : '?'}
+                      {isAiSlot ? <BotIcon size={20} /> : player ? (i === 0 ? '👑' : i + 1) : '?'}
                     </div>
                     <div className="flex flex-col">
-                      <span className={player ? 'font-bold' : 'text-muted-foreground italic'}>
-                        {player ? player.name : 'ממתין...'}
+                      <span className={isAiSlot ? 'font-bold text-blue-300' : player ? 'font-bold' : 'text-muted-foreground italic'}>
+                        {isAiSlot ? 'מחשב' : player ? player.name : 'ממתין...'}
                         {isMe && <span className="text-xs text-emerald-400 mr-1"> (אתה)</span>}
                       </span>
-                      {player && i === 0 && <span className="text-[10px] text-amber-400">מארח</span>}
+                      {!isAiSlot && player && i === 0 && <span className="text-[10px] text-amber-400">מארח</span>}
                     </div>
                   </div>
-                  {player ? (
+                  {isAiSlot ? (
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400">
+                      AI
+                    </span>
+                  ) : player ? (
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-400">
                       מחובר ✓
                     </span>
@@ -135,27 +149,37 @@ export default function OnlineLobbyPage() {
         </div>
 
         <div className="flex flex-col gap-3 w-full max-w-sm">
-          {amIHost && (
-            <Button
-              size="lg"
-              variant="glow"
-              className="w-full text-lg rounded-2xl"
-              disabled={lobbyState.players.length < 3}
-              onClick={startOnlineGame}
-            >
-              {lobbyState.players.length < 3 ? `ממתין... (${lobbyState.players.length}/3)` : 'התחל משחק! 🚀'}
-            </Button>
-          )}
+          {amIHost && (() => {
+            const needed = lobbyState.maxPlayers ?? 3;
+            const humanCount = lobbyState.players.filter((p: any) => p.seatIndex !== lobbyState.aiSeat).length;
+            const ready = humanCount >= needed;
+            return (
+              <Button
+                size="lg"
+                variant="glow"
+                className="w-full text-lg rounded-2xl"
+                disabled={!ready}
+                onClick={startOnlineGame}
+              >
+                {ready ? 'התחל משחק! 🚀' : `ממתין... (${humanCount}/${needed})`}
+              </Button>
+            );
+          })()}
 
-          {!amIHost && (
-            <div className="text-center py-3">
-              {lobbyState.players.length < 3 ? (
-                <p className="text-sm text-muted-foreground animate-pulse">ממתין לשחקנים נוספים... ({lobbyState.players.length}/3)</p>
-              ) : (
-                <p className="text-sm text-emerald-400 animate-pulse">ממתין שהמארח יתחיל את המשחק...</p>
-              )}
-            </div>
-          )}
+          {!amIHost && (() => {
+            const needed = lobbyState.maxPlayers ?? 3;
+            const humanCount = lobbyState.players.filter((p: any) => p.seatIndex !== lobbyState.aiSeat).length;
+            const ready = humanCount >= needed;
+            return (
+              <div className="text-center py-3">
+                {!ready ? (
+                  <p className="text-sm text-muted-foreground animate-pulse">ממתין לשחקנים נוספים... ({humanCount}/{needed})</p>
+                ) : (
+                  <p className="text-sm text-emerald-400 animate-pulse">ממתין שהמארח יתחיל את המשחק...</p>
+                )}
+              </div>
+            );
+          })()}
 
           <Button variant="ghost" onClick={() => { leaveRoom(); setMode('menu'); }} className="text-muted-foreground hover:text-rose-400">
             יציאה מהחדר
@@ -218,6 +242,31 @@ export default function OnlineLobbyPage() {
             />
           </div>
           <div className="glass rounded-2xl p-4">
+            <label className="block text-xs font-medium text-muted-foreground mb-2">מספר שחקנים</label>
+            <div className="flex items-center justify-center gap-2">
+              <button
+                onClick={() => setMaxPlayers(3)}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                  maxPlayers === 3
+                    ? 'bg-emerald-500/20 text-emerald-300 ring-1 ring-emerald-500/30'
+                    : 'glass text-muted-foreground hover:bg-white/10'
+                }`}
+              >
+                3 שחקנים
+              </button>
+              <button
+                onClick={() => setMaxPlayers(2)}
+                className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all ${
+                  maxPlayers === 2
+                    ? 'bg-blue-500/20 text-blue-300 ring-1 ring-blue-500/30'
+                    : 'glass text-muted-foreground hover:bg-white/10'
+                }`}
+              >
+                <BotIcon size={16} /> 2 + מחשב
+              </button>
+            </div>
+          </div>
+          <div className="glass rounded-2xl p-4">
             <label className="block text-xs font-medium text-muted-foreground mb-2">יעד ניצחון</label>
             <div className="flex items-center justify-center gap-4">
               <button onClick={() => setVictoryTarget((v) => Math.max(1, v - 5))} className="w-10 h-10 rounded-xl glass text-lg font-bold active:scale-95 hover:bg-white/10">−</button>
@@ -228,7 +277,7 @@ export default function OnlineLobbyPage() {
         </div>
         <div className="flex flex-col gap-3 w-full max-w-sm">
           <Button size="lg" variant="glow" className="w-full text-lg rounded-2xl" disabled={!hostName.trim()} onClick={handleCreate}>
-            צור חדר 🎮
+            צור חדר
           </Button>
           <Button variant="ghost" onClick={() => setMode('menu')} className="text-muted-foreground">← חזרה</Button>
         </div>
