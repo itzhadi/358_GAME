@@ -44,26 +44,6 @@ export function TrickPlayScreen() {
 
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-      {/* Turn indicator */}
-      <div className={cn(
-        'text-center py-1.5 transition-colors border-b',
-        isTrickComplete ? 'glass-strong border-amber-500/10' : isMyTurn ? 'glass-strong border-emerald-500/10' : 'glass border-white/5',
-      )}>
-        {isTrickComplete ? (
-          <span className="text-xs font-bold text-amber-400 animate-pulse-soft">🏆 לקיחה הושלמה!</span>
-        ) : isMyTurn ? (
-          <span className="text-xs font-bold text-emerald-400 animate-pulse-soft">תורך לשחק! 🎯</span>
-        ) : isAiThinking ? (
-          <span className="text-xs text-muted-foreground">
-            <BotIcon size={14} /> {currentTurnPlayer?.name} חושב...
-          </span>
-        ) : currentTurnPlayer ? (
-          <span className="text-xs text-muted-foreground">
-            ממתין ל{currentTurnPlayer.name}...
-          </span>
-        ) : null}
-      </div>
-
       {/* Opponent bar - mobile only */}
       <div className="flex sm:hidden justify-center gap-4 py-1.5 glass border-b border-white/5">
         <AIPlayerPanel
@@ -94,26 +74,42 @@ export function TrickPlayScreen() {
         />
       </div>
 
+      {/* Turn indicator */}
+      <div className={cn(
+        'text-center py-1.5 transition-colors shrink-0',
+        isTrickComplete ? 'text-amber-400 font-bold animate-pulse-soft'
+          : isMyTurn ? 'text-emerald-400 font-bold'
+          : 'text-muted-foreground',
+      )}>
+        <span className="text-base">
+          {isTrickComplete ? 'לקיחה הושלמה!'
+            : isMyTurn ? 'תורך לשחק!'
+            : isAiThinking ? <><BotIcon size={14} /> {currentTurnPlayer?.name} חושב...</>
+            : currentTurnPlayer ? <>ממתין ל{currentTurnPlayer.name}...</>
+            : null}
+        </span>
+      </div>
+
       {/* Game table area */}
       <div className="flex-1 flex items-stretch justify-center min-h-0 overflow-hidden gap-1 sm:gap-4">
         {/* Left opponent - desktop */}
-        <div className="hidden sm:flex items-center shrink-0">
-          <AIPlayerPanel
-            name={players[leftSeat].name}
-            seatIndex={leftSeat}
-            cardCount={gameState.playerHands[leftSeat]?.length ?? 0}
-            tricksTaken={tricksTakenCount[leftSeat]}
-            target={targets[leftSeat]}
-            isActive={gameState.currentPlayerIndex === leftSeat}
-            isThinking={isAiThinking && gameState.currentPlayerIndex === leftSeat}
-            side="left"
-            cutterSuit={cutterSuit}
-            isAI={aiSeats.has(leftSeat)}
-          />
-        </div>
+          <div className="hidden sm:flex items-center shrink-0">
+            <AIPlayerPanel
+              name={players[leftSeat].name}
+              seatIndex={leftSeat}
+              cardCount={gameState.playerHands[leftSeat]?.length ?? 0}
+              tricksTaken={tricksTakenCount[leftSeat]}
+              target={targets[leftSeat]}
+              isActive={gameState.currentPlayerIndex === leftSeat}
+              isThinking={isAiThinking && gameState.currentPlayerIndex === leftSeat}
+              side="left"
+              cutterSuit={cutterSuit}
+              isAI={aiSeats.has(leftSeat)}
+            />
+          </div>
 
-        {/* Center table */}
-        <div className="flex flex-col items-center justify-center py-1 sm:py-2 shrink">
+          {/* Center table */}
+          <div className="relative flex flex-col items-center justify-center py-1 sm:py-2 shrink">
           <div className="relative w-[92vw] sm:w-[55vw] max-w-[700px] h-[40vh] sm:h-[50vh] max-h-[380px] rounded-[1.5rem] sm:rounded-[2rem] border border-white/8 overflow-hidden game-table">
             <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(circle_at_50%_50%,white_1px,transparent_1px)] bg-[length:4px_4px]" />
 
@@ -186,6 +182,7 @@ export function TrickPlayScreen() {
               </div>
             </div>
           </div>
+
         </div>
 
         {/* Right opponent - desktop */}

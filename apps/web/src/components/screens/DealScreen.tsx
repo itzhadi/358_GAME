@@ -29,7 +29,6 @@ export function DealScreen() {
     <div className="flex flex-col items-center justify-center flex-1 p-4 text-center animate-scale-in relative">
       <div className="absolute top-[10%] right-[-5%] w-[250px] h-[250px] rounded-full bg-emerald-600/8 blur-[100px] pointer-events-none" />
 
-      <div className="text-5xl mb-3 animate-float">🎴</div>
       <h2 className="text-2xl font-black text-gradient-primary mb-1">
         {handNumber === 0 ? 'משחק חדש!' : `יד ${handNumber + 1}`}
       </h2>

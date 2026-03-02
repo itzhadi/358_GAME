@@ -9,9 +9,10 @@ import BotIcon from '@/components/BotIcon';
 interface GameStatusBarProps {
   gameState: GameState;
   aiSeats: Set<number>;
+  onExit?: () => void;
 }
 
-export function GameStatusBar({ gameState, aiSeats }: GameStatusBarProps) {
+export function GameStatusBar({ gameState, aiSeats, onExit }: GameStatusBarProps) {
   const [expanded, setExpanded] = useState(false);
   const hasAI = aiSeats.size > 0;
   const { players, targets, tricksTakenCount, scoreTotal, victoryTarget, cutterSuit, trickNumber, handNumber, phase } = gameState;
@@ -21,8 +22,21 @@ export function GameStatusBar({ gameState, aiSeats }: GameStatusBarProps) {
 
   return (
     <div className="w-full glass-strong border-b border-white/8 z-30 relative">
-      <div className="grid grid-cols-[1fr_auto_auto] items-center pl-14 pr-2.5 py-2 text-xs gap-1.5">
-        <div className="flex items-center gap-2.5 overflow-hidden">
+      <div className="grid grid-cols-[auto_1fr_auto] items-center px-2.5 py-2 text-xs gap-1.5">
+        <div className="flex items-center gap-2">
+          {onExit && (
+            <button
+              onClick={onExit}
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-400 hover:bg-white/8 transition-all"
+              title="יציאה"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                <polyline points="16 17 21 12 16 7" />
+                <line x1="21" y1="12" x2="9" y2="12" />
+              </svg>
+            </button>
+          )}
           <span className="text-muted-foreground font-medium shrink-0">יד {Math.max(handNumber, 1)}</span>
           {showCutter && (
             <span className="flex items-center gap-1 shrink-0 bg-white/5 rounded-full px-2 py-0.5">
@@ -36,7 +50,7 @@ export function GameStatusBar({ gameState, aiSeats }: GameStatusBarProps) {
           )}
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center justify-center gap-1.5">
           {players.map((p, i) => {
             const taken = tricksTakenCount[i];
             const target = targets[i];

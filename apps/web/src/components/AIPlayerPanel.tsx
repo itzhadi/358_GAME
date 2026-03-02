@@ -75,7 +75,7 @@ export function AIPlayerPanel({
           isThinking && 'border-amber-400',
         )}>
           <div className="w-full h-full flex items-center justify-center text-sm text-white/90">
-            {avatar.icon}
+            {isAI ? <BotIcon size={40} /> : avatar.icon}
           </div>
           {isThinking && (
             <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
@@ -92,7 +92,7 @@ export function AIPlayerPanel({
             'text-[10px] font-bold truncate max-w-[60px]',
             isActive ? 'text-emerald-300' : 'text-slate-300',
           )}>
-            {isAI && <><BotIcon size={12} />{' '}</>}{name}
+            {name}
           </p>
           <p className={cn(
             'text-[10px] font-mono font-bold',
@@ -119,7 +119,7 @@ export function AIPlayerPanel({
         isThinking && 'border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.25)]',
       )}>
         <div className="w-full h-full flex items-center justify-center text-2xl sm:text-3xl text-white/90 drop-shadow-md">
-          {avatar.icon}
+          {isAI ? <BotIcon size={72} /> : avatar.icon}
         </div>
         {isThinking && (
           <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
@@ -137,7 +137,7 @@ export function AIPlayerPanel({
           'text-xs font-bold truncate max-w-[80px]',
           isActive ? 'text-emerald-300' : 'text-slate-300',
         )}>
-          {isAI && <><BotIcon size={14} />{' '}</>}{name}
+          {name}
         </p>
         <p className={cn(
           'text-[10px] font-mono font-bold',

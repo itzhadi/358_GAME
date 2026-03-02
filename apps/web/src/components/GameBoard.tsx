@@ -18,7 +18,11 @@ import { DealerKupaScreen } from './screens/DealerKupaScreen';
 import { DealerReturnsScreen } from './screens/DealerReturnsScreen';
 import { ReshuffleScreen } from './screens/ReshuffleScreen';
 
-export function GameBoard() {
+interface GameBoardProps {
+  onExit?: () => void;
+}
+
+export function GameBoard({ onExit }: GameBoardProps) {
   const { gameState, showPrivacyScreen, showTrickResult, showReceivedCards, showDealerKupa, showDealerReturns, aiSeats, runAiTurn, reshuffleNotification } = useGameStore();
   const aiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -103,7 +107,7 @@ export function GameBoard() {
   if (showReceivedCards) {
     return (
       <div className="flex flex-col min-h-[100dvh]">
-        <GameStatusBar gameState={gameState} aiSeats={aiSeats} />
+        <GameStatusBar gameState={gameState} aiSeats={aiSeats} onExit={onExit} />
         <ReceivedCardsScreen />
       </div>
     );
@@ -112,7 +116,7 @@ export function GameBoard() {
   if (showDealerKupa && gameState.dealerReceivedKupa.length > 0) {
     return (
       <div className="flex flex-col min-h-[100dvh]">
-        <GameStatusBar gameState={gameState} aiSeats={aiSeats} />
+        <GameStatusBar gameState={gameState} aiSeats={aiSeats} onExit={onExit} />
         <DealerKupaScreen />
       </div>
     );
@@ -121,7 +125,7 @@ export function GameBoard() {
   if (showDealerReturns && (gameState.dealerHiddenReturns.length > 0 || gameState.dealerPendingReceived.length > 0)) {
     return (
       <div className="flex flex-col min-h-[100dvh]">
-        <GameStatusBar gameState={gameState} aiSeats={aiSeats} />
+        <GameStatusBar gameState={gameState} aiSeats={aiSeats} onExit={onExit} />
         <DealerReturnsScreen />
       </div>
     );
@@ -177,7 +181,7 @@ export function GameBoard() {
   return (
     <div className="flex flex-col h-[100dvh] overflow-hidden">
       {!hideStatusBar && (
-        <GameStatusBar gameState={gameState} aiSeats={aiSeats} />
+        <GameStatusBar gameState={gameState} aiSeats={aiSeats} onExit={onExit} />
       )}
       <div className="flex-1 flex flex-col min-h-0">{screen}</div>
       {showHistory && <TrickHistory gameState={gameState} aiSeats={aiSeats} />}

@@ -24,21 +24,12 @@ export default function OnlinePlayPage() {
         );
     }
 
-    return (
-        <div className="relative">
-            {/* Exit button for online */}
-            <button
-                onClick={() => {
-                    if (confirm('האם אתה בטוח שברצונך לצאת?')) {
-                        leaveRoom();
-                        router.push('/online');
-                    }
-                }}
-                className="fixed top-4 left-4 z-50 p-2 glass rounded-full hover:bg-white/10 text-xs text-muted-foreground"
-            >
-                🚪 יציאה
-            </button>
-            <GameBoard />
-        </div>
-    );
+    const handleExit = () => {
+        if (confirm('האם אתה בטוח שברצונך לצאת?')) {
+            leaveRoom();
+            router.push('/online');
+        }
+    };
+
+    return <GameBoard onExit={handleExit} />;
 }
