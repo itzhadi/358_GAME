@@ -988,16 +988,22 @@ function strategicDump(legal: Card[], hand: Card[], intel: GameIntel): string {
     let score = 0;
     const len = suitLens[c.suit] || 0;
 
-    // Shorter suit = better dump (closer to void)
     score += len * 100;
-
-    // Lower rank = less waste
     score += RANK_VALUE[c.rank];
 
-    // If dumping this card creates a void → massive bonus
-    if (len === 1) score -= 500;
+    if (len === 1) {
+      const unknown = unknownInSuit(c.suit, intel.allKnown);
+      const higherOut = unknown.filter(u => RANK_VALUE[u.rank] > RANK_VALUE[c.rank]).length;
+      const isHighCard = RANK_VALUE[c.rank] >= 13;
 
-    // Never dump aces/kings unless forced (they're future masters)
+      if (isHighCard && higherOut <= 1) {
+        score += 600;
+      } else {
+        const voidBonus = intel.tricksLeft <= 4 ? -200 : -500;
+        score += voidBonus;
+      }
+    }
+
     if (RANK_VALUE[c.rank] >= 13 && len >= 2) score += 800;
 
     return { card: c, score };
