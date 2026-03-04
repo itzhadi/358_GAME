@@ -535,17 +535,21 @@ function captainLead(
     if (cutterMasters.length > 0) return cutterMasters[0].id;
   }
 
-  // ── PHASE 4: Lead HIGH — always be aggressive as captain ──
+  // ── PHASE 4: Lead safe high cards (masters or near-masters only) ──
   const aggressive = highestFromStrongest(nonCutter, hand, intel);
   if (aggressive) return aggressive;
 
-  // ── PHASE 5: Lead suits where opponent is void to waste their cutters ──
+  // ── PHASE 5: Lead LOW to establish — flush out higher cards, promote ours ──
+  const establish = leadLowToEstablish(nonCutter, hand, intel);
+  if (establish) return establish;
+
+  // ── PHASE 6: Lead suits where opponent is void to waste their cutters ──
   if (oppCutters > 0) {
     const voidLead = leadToDrawCutters(nonCutter, hand, intel);
     if (voidLead) return voidLead;
   }
 
-  return sortDesc(legal)[0].id;
+  return lowestFromLongest(nonCutter, hand, intel) || sortAsc(legal)[0].id;
 }
 
 function balancerLead(
@@ -569,16 +573,15 @@ function balancerLead(
     if (cutterMasters.length > 0) return cutterMasters[0].id;
   }
 
-  // 4. Lead HIGH — be aggressive, don't give free tricks
-  if (intel.tricksNeeded > 0) {
-    return highestFromStrongest(nonCutter, hand, intel) || sortDesc(legal)[0].id;
-  }
+  // 4. Lead safe high cards (masters/near-masters only)
+  const aggressive = highestFromStrongest(nonCutter, hand, intel);
+  if (aggressive) return aggressive;
 
-  // 5. Probe only when establishment is very specific (exactly 1 higher out)
-  const probe = probeLeadForEstablishment(nonCutter, hand, intel);
-  if (probe) return probe;
+  // 5. Lead LOW to establish high cards
+  const establish = leadLowToEstablish(nonCutter, hand, intel);
+  if (establish) return establish;
 
-  return highestFromStrongest(nonCutter, hand, intel) || sortDesc(legal)[0].id;
+  return lowestFromLongest(nonCutter, hand, intel) || sortAsc(legal)[0].id;
 }
 
 function sergeantLead(
@@ -597,9 +600,11 @@ function sergeantLead(
       if (cutterMasters.length > 0) return cutterMasters[0].id;
     }
 
-    if (intel.tricksLeft > 0 && tricksNeeded >= intel.tricksLeft * 0.6) {
-      return highestFromStrongest(nonCutter, hand, intel) || sortDesc(legal)[0].id;
-    }
+    const aggressive = highestFromStrongest(nonCutter, hand, intel);
+    if (aggressive) return aggressive;
+
+    const establish = leadLowToEstablish(nonCutter, hand, intel);
+    if (establish) return establish;
   }
 
   const dangerCards = findDangerousHighCards(nonCutter, hand, intel);
@@ -783,11 +788,44 @@ function highestFromStrongest(cards: Card[], hand: Card[], intel: GameIntel): st
     const suitLen = suitCards(hand, c.suit).length;
     const unknown = unknownInSuit(c.suit, intel.allKnown);
     const higherOut = unknown.filter(u => RANK_VALUE[u.rank] > RANK_VALUE[c.rank]).length;
-    // Prefer high cards from long suits with few higher unknowns
-    const score = RANK_VALUE[c.rank] * 10 + suitLen * 5 - higherOut * 20;
+
+    // NEVER lead a non-master with 2+ higher cards out — it will just lose
+    if (higherOut >= 2) continue;
+    // Near-master (1 higher out) — only lead if it's K or A
+    if (higherOut === 1 && RANK_VALUE[c.rank] < 13) continue;
+
+    const score = RANK_VALUE[c.rank] * 10 + suitLen * 5;
     if (score > bestScore) { bestScore = score; bestCard = c; }
   }
   return bestCard?.id ?? null;
+}
+
+function leadLowToEstablish(cards: Card[], hand: Card[], intel: GameIntel): string | null {
+  if (cards.length === 0) return null;
+  let bestSuit: Suit | null = null;
+  let bestScore = -Infinity;
+
+  for (const suit of SUITS) {
+    if (suit === intel.cutterSuit) continue;
+    const mySuit = sortDesc(suitCards(cards, suit));
+    if (mySuit.length < 2) continue;
+
+    const unknown = unknownInSuit(suit, intel.allKnown);
+    const higherOut = unknown.filter(c => RANK_VALUE[c.rank] > RANK_VALUE[mySuit[0].rank]).length;
+    if (higherOut === 0) continue; // already master — handled elsewhere
+
+    // Score: prefer suits with fewer higher cards out + more length (control)
+    const score = mySuit.length * 30 - higherOut * 40 + RANK_VALUE[mySuit[0].rank] * 5;
+    if (!anyOpponentVoid(suit, intel)) {
+      if (score > bestScore) { bestScore = score; bestSuit = suit; }
+    }
+  }
+
+  if (bestSuit) {
+    const low = sortAsc(suitCards(cards, bestSuit));
+    return low[0].id;
+  }
+  return null;
 }
 
 function lowestFromShortest(cards: Card[], hand: Card[], intel: GameIntel): string | null {
