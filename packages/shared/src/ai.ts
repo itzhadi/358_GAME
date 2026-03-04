@@ -883,9 +883,9 @@ function followSuit(
   const { cutterSuit, overTarget, tricksNeeded, isLast, isSecond, allKnown, myTarget, trickCards } = intel;
   const mySuit = sortDesc(legal.filter((c) => c.suit === leadSuit));
 
-  // Cutter already played & we're following non-cutter → can't win → dump highest to shed dangerous cards
+  // Cutter already played & we're following non-cutter → can't win → play LOWEST to preserve high cards
   if (cutterSuit && leadSuit !== cutterSuit && trickCards.some((cp) => cp.card.suit === cutterSuit)) {
-    return mySuit[0].id;
+    return mySuit[mySuit.length - 1].id;
   }
 
   // ===== OVER TARGET → still compete if opponents need tricks =====
@@ -898,8 +898,7 @@ function followSuit(
         if (masterBeater) return masterBeater.id;
       }
     }
-    const losers = mySuit.filter((c) => RANK_VALUE[c.rank] <= winner.value);
-    if (losers.length > 0) return losers[0].id;
+    // Can't win → play LOWEST to preserve high cards for future tricks
     return mySuit[mySuit.length - 1].id;
   }
 
