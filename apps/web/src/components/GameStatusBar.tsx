@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { GameState } from '@358/shared';
-import { SuitIcon } from './PlayingCard';
 import { cn } from '@/lib/utils';
 import BotIcon from '@/components/BotIcon';
 
@@ -10,15 +9,14 @@ interface GameStatusBarProps {
   gameState: GameState;
   aiSeats: Set<number>;
   onExit?: () => void;
+  mySeat?: number;
 }
 
-export function GameStatusBar({ gameState, aiSeats, onExit }: GameStatusBarProps) {
+export function GameStatusBar({ gameState, aiSeats, onExit, mySeat }: GameStatusBarProps) {
   const [expanded, setExpanded] = useState(false);
   const hasAI = aiSeats.size > 0;
-  const { players, targets, tricksTakenCount, scoreTotal, victoryTarget, cutterSuit, trickNumber, handNumber, phase } = gameState;
-
+  const { players, targets, tricksTakenCount, scoreTotal, victoryTarget, phase } = gameState;
   const showTricks = ['TRICK_PLAY', 'HAND_SCORING', 'GAME_OVER'].includes(phase);
-  const showCutter = !!cutterSuit && phase !== 'SETUP_DEAL';
 
   return (
     <div className="w-full glass-strong border-b border-white/8 z-30 relative">
@@ -27,26 +25,10 @@ export function GameStatusBar({ gameState, aiSeats, onExit }: GameStatusBarProps
           {onExit && (
             <button
               onClick={onExit}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-rose-400 hover:bg-white/8 transition-all"
-              title="יציאה"
+              className="px-2.5 py-1 rounded-lg text-rose-400/80 hover:text-rose-300 hover:bg-rose-500/10 transition-all text-[11px] font-bold whitespace-nowrap"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <polyline points="16 17 21 12 16 7" />
-                <line x1="21" y1="12" x2="9" y2="12" />
-              </svg>
+              צא מהחדר
             </button>
-          )}
-          <span className="text-muted-foreground font-medium shrink-0">יד {Math.max(handNumber, 1)}</span>
-          {showCutter && (
-            <span className="flex items-center gap-1 shrink-0 bg-white/5 rounded-full px-2 py-0.5">
-              <SuitIcon suit={cutterSuit!} className="text-lg" />
-            </span>
-          )}
-          {showTricks && (
-            <span className="text-muted-foreground shrink-0">
-              <span className="text-emerald-400 font-bold">{trickNumber}</span>/16
-            </span>
           )}
         </div>
 
@@ -54,6 +36,7 @@ export function GameStatusBar({ gameState, aiSeats, onExit }: GameStatusBarProps
           {players.map((p, i) => {
             const taken = tricksTakenCount[i];
             const target = targets[i];
+            const isMe = mySeat === i;
             const isActive = gameState.currentPlayerIndex === i;
             const isOver = taken > target;
             const isMet = taken === target;
@@ -63,7 +46,7 @@ export function GameStatusBar({ gameState, aiSeats, onExit }: GameStatusBarProps
                 key={p.id}
                 className={cn(
                   'flex items-center gap-1 px-2 py-0.5 rounded-lg transition-all',
-                  isActive ? 'bg-emerald-500/15 ring-1 ring-emerald-500/20' : '',
+                  isMe ? 'bg-emerald-500/15 ring-1 ring-emerald-500/20' : '',
                 )}
               >
                 <span className="text-[10px] text-slate-400 truncate max-w-[50px]">{p.name}</span>
@@ -147,8 +130,11 @@ export function GameStatusBar({ gameState, aiSeats, onExit }: GameStatusBarProps
                       </span>
                     ) : '—'}
                   </div>
-                  <div className="text-center">
-                    <span className="font-mono font-bold">{total}</span>
+                  <div className="text-center" dir="ltr">
+                    <span className={cn(
+                      'font-mono font-bold',
+                      total > 0 ? 'text-green-400/80' : total < 0 ? 'text-rose-400/80' : '',
+                    )}>{total}</span>
                     <span className="text-muted-foreground text-[10px]">/{victoryTarget}</span>
                   </div>
                 </div>

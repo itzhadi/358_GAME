@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
-import { getRequiredReturnCard } from '@358/shared';
+import { useState, useMemo } from 'react';
+import { Card, getRequiredReturnCard } from '@358/shared';
 import { Button } from '@/components/ui/button';
 import { PlayingCard } from '@/components/PlayingCard';
 import { PlayerHand } from '@/components/PlayerHand';
 import { useGameStore } from '@/store/gameStore';
 import BotIcon from '@/components/BotIcon';
+
+type ReturnPair = { received: Card; returned: Card; toPlayerName: string };
 
 export function ExchangeScreen() {
   const { gameState, dispatch, activePlayerSeat, aiSeats, mode, playerSeat } = useGameStore();
@@ -28,11 +30,38 @@ export function ExchangeScreen() {
   const isGiving = gameState.phase === 'EXCHANGE_GIVE';
   const isReturning = gameState.phase === 'EXCHANGE_RETURN';
 
-  const cardsGivenToMe = exchangeInfo.givenCards.filter(g => g.toSeat === humanSeat);
   const isDealerBeforeCutter = humanSeat === gameState.dealerIndex && !gameState.cutterSuit;
   const cardsReturnedToMe = isDealerBeforeCutter
     ? []
     : exchangeInfo.returnedCards.filter(r => r.toSeat === humanSeat);
+
+  // Pre-compute all return pairs for the human so we can show summary and dispatch all at once
+  const returnPairs = useMemo<ReturnPair[]>(() => {
+    if (!isReturning || !isMyTurn) return [];
+    const { givings, givenCards, returnedCards } = exchangeInfo;
+    const pairs: ReturnPair[] = [];
+    let simHand = [...hand];
+
+    for (const giving of givings) {
+      if (giving.toSeat !== currentSeat) continue;
+      const givenForDir = givenCards.filter(g => g.fromSeat === giving.fromSeat && g.toSeat === currentSeat);
+      const alreadyReturned = returnedCards.filter(r => r.fromSeat === currentSeat && r.toSeat === giving.fromSeat).length;
+
+      for (let i = alreadyReturned; i < givenForDir.length; i++) {
+        const receivedCard = givenForDir[i].card;
+        const returnCard = getRequiredReturnCard(simHand, receivedCard);
+        pairs.push({ received: receivedCard, returned: returnCard, toPlayerName: players[giving.fromSeat].name });
+        simHand = simHand.filter(c => c.id !== returnCard.id);
+      }
+    }
+    return pairs;
+  }, [isReturning, isMyTurn, currentSeat, exchangeInfo, hand, players]);
+
+  const handleConfirmReturns = () => {
+    for (const pair of returnPairs) {
+      dispatch({ type: 'EXCHANGE_RETURN_CARD', payload: { fromSeat: currentSeat, cardId: pair.returned.id } });
+    }
+  };
 
   if (isAiTurn || (isOnline && !isMyTurn)) {
     return (
@@ -81,6 +110,45 @@ export function ExchangeScreen() {
     );
   }
 
+  // --- EXCHANGE_RETURN: auto summary screen ---
+  if (isReturning && isMyTurn && returnPairs.length > 0) {
+    return (
+      <div className="flex flex-col flex-1 min-h-0">
+        <div className="flex-1 flex flex-col items-center p-4 text-center overflow-y-auto">
+          <div className="text-4xl mb-3">🔄</div>
+          <h2 className="text-xl font-bold mb-1">החזרת קלפים</h2>
+          <p className="text-sm text-muted-foreground mb-5">
+            הקלפים הבאים יוחזרו אוטומטית (הגבוה ביותר בכל צורה)
+          </p>
+
+          <div className="w-full max-w-sm space-y-3 mb-6">
+            {returnPairs.map((pair, idx) => (
+              <div key={idx} className="glass rounded-2xl p-3 border border-white/5">
+                <div className="flex items-center justify-center gap-3">
+                  <div className="text-center">
+                    <p className="text-[9px] text-green-400 mb-0.5">קיבלת</p>
+                    <PlayingCard card={pair.received} small highlight />
+                  </div>
+                  <span className="text-amber-400 text-xl">→</span>
+                  <div className="text-center">
+                    <p className="text-[9px] text-rose-400 mb-0.5">מחזיר</p>
+                    <PlayingCard card={pair.returned} small />
+                  </div>
+                  <span className="text-[10px] text-slate-500">ל{pair.toPlayerName}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <Button size="lg" variant="glow" className="text-lg rounded-2xl px-10" onClick={handleConfirmReturns}>
+            אישור ✨
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // --- EXCHANGE_GIVE ---
   let cardsToGive = 0;
   if (isGiving) {
     const currentGiving = exchangeInfo.givings[exchangeInfo.currentGiverIdx];
@@ -92,214 +160,64 @@ export function ExchangeScreen() {
     }
   }
 
-  let autoReturnCard: string | null = null;
-  let autoReturnIsReceived = false;
-  const receivedCardsList: { fromSeat: number; card: typeof hand[0] }[] = [];
-  let totalMyReturns = 0;
-  let doneMyReturns = 0;
-
-  type ExchangePair = {
-    received: typeof hand[0];
-    returned: typeof hand[0] | null;
-    fromSeat: number;
-    done: boolean;
-  };
-  const exchangePairs: ExchangePair[] = [];
-  let currentReceivedCard: typeof hand[0] | null = null;
-  let currentReturnCardObj: typeof hand[0] | null = null;
-
-  if (isReturning) {
-    const givings = exchangeInfo.givings;
-    const returnedCards = exchangeInfo.returnedCards;
-    const givenCards = exchangeInfo.givenCards;
-
-    for (const giving of givings) {
-      if (giving.toSeat === currentSeat) {
-        const givenForDir = givenCards.filter(
-          (g) => g.fromSeat === giving.fromSeat && g.toSeat === currentSeat,
-        );
-        const returnedForDir = returnedCards.filter(
-          (r) => r.fromSeat === currentSeat && r.toSeat === giving.fromSeat,
-        );
-        for (let i = 0; i < givenForDir.length; i++) {
-          receivedCardsList.push({ fromSeat: givenForDir[i].fromSeat, card: givenForDir[i].card });
-          exchangePairs.push({
-            received: givenForDir[i].card,
-            returned: i < returnedForDir.length ? returnedForDir[i].card : null,
-            fromSeat: giving.fromSeat,
-            done: i < returnedForDir.length,
-          });
-        }
-        totalMyReturns += givenForDir.length;
-        doneMyReturns += returnedForDir.length;
-      }
-    }
-
-    for (const giving of givings) {
-      if (giving.toSeat === currentSeat) {
-        const givenForDir = givenCards.filter(
-          (g) => g.fromSeat === giving.fromSeat && g.toSeat === currentSeat,
-        );
-        const returnedForDir = returnedCards.filter(
-          (r) => r.fromSeat === currentSeat && r.toSeat === giving.fromSeat,
-        );
-        if (returnedForDir.length < givenForDir.length) {
-          const receivedCard = givenForDir[returnedForDir.length]?.card;
-          if (receivedCard) {
-            const required = getRequiredReturnCard(hand, receivedCard);
-            autoReturnCard = required.id;
-            autoReturnIsReceived = required.id === receivedCard.id;
-            currentReceivedCard = receivedCard;
-            currentReturnCardObj = hand.find((c) => c.id === required.id) || null;
-          }
-          break;
-        }
-      }
-    }
-  }
-
-  const receivedCardIds = new Set(receivedCardsList.map((r) => r.card.id));
-
   const handleCardClick = (cardId: string) => {
-    if (!isMyTurn) return;
-    if (isGiving) {
-      setSelectedCards((prev) => {
-        const next = new Set(prev);
-        if (next.has(cardId)) {
-          next.delete(cardId);
-        } else if (next.size < cardsToGive) {
-          next.add(cardId);
-        }
-        return next;
-      });
-    } else if (isReturning) {
-      dispatch({
-        type: 'EXCHANGE_RETURN_CARD',
-        payload: { fromSeat: currentSeat, cardId },
-      });
-    }
+    if (!isMyTurn || !isGiving) return;
+    setSelectedCards((prev) => {
+      const next = new Set(prev);
+      if (next.has(cardId)) {
+        next.delete(cardId);
+      } else if (next.size < cardsToGive) {
+        next.add(cardId);
+      }
+      return next;
+    });
   };
 
   const handleGiveCards = () => {
     if (!isMyTurn) return;
     const cardIds = Array.from(selectedCards);
     for (const cardId of cardIds) {
-      dispatch({
-        type: 'EXCHANGE_GIVE_CARD',
-        payload: { fromSeat: currentSeat, cardId },
-      });
+      dispatch({ type: 'EXCHANGE_GIVE_CARD', payload: { fromSeat: currentSeat, cardId } });
     }
     setSelectedCards(new Set());
   };
 
-  const handleAutoReturn = () => {
-    if (!isMyTurn) return;
-    if (autoReturnCard) {
-      dispatch({
-        type: 'EXCHANGE_RETURN_CARD',
-        payload: { fromSeat: currentSeat, cardId: autoReturnCard },
-      });
-    }
-  };
-
   const exchangePartner = isGiving
     ? exchangeInfo.givings[exchangeInfo.currentGiverIdx]?.toSeat
-    : exchangeInfo.givings.find((g) => g.toSeat === currentSeat)?.fromSeat;
+    : undefined;
   const partnerName = exchangePartner !== undefined ? players[exchangePartner]?.name : '';
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <div className="text-center py-4 glass-strong">
-        <h2 className="text-lg font-bold">
-          {isGiving ? 'תן קלפים' : 'החזר קלפים'}
-        </h2>
+        <h2 className="text-lg font-bold">תן קלפים</h2>
         <p className="text-sm text-muted-foreground">
-          {isGiving
-            ? <><span className="text-emerald-400 font-bold">{currentPlayer.name}</span>: בחר {cardsToGive} קלפים לתת ל{partnerName}</>
-            : autoReturnCard
-              ? <><span className="text-amber-400 font-bold">החזרה {doneMyReturns + 1}/{totalMyReturns}</span> — לחץ על הכפתור להחזרה</>
-              : <><span className="text-emerald-400 font-bold">{currentPlayer.name}</span>: בחר קלף להחזיר ל{partnerName}</>
-          }
+          <span className="text-emerald-400 font-bold">{currentPlayer.name}</span>: בחר {cardsToGive} קלפים לתת ל{partnerName}
           {!isMyTurn && <span className="block text-xs mt-1 text-muted-foreground">(ממתין ל{currentPlayer.name}...)</span>}
         </p>
       </div>
 
-      {isReturning && isMyTurn && exchangePairs.length > 0 && (
-        <div className="mx-3 mt-3 flex-1 overflow-y-auto pb-2">
-          {exchangePairs.filter((p) => p.done).length > 0 && (
-            <div className="glass rounded-2xl p-3 mb-2 border border-white/5">
-              <p className="text-[10px] font-bold text-muted-foreground mb-2 text-center">✅ הוחזרו</p>
-              <div className="space-y-1.5">
-                {exchangePairs.filter((p) => p.done).map((pair, idx) => (
-                  <div key={idx} className="flex items-center justify-center gap-2">
-                    <div className="text-center">
-                      <p className="text-[9px] text-green-400/70 mb-0.5">קיבלת</p>
-                      <PlayingCard card={pair.received} small />
-                    </div>
-                    <span className="text-muted-foreground text-lg">→</span>
-                    <div className="text-center">
-                      <p className="text-[9px] text-rose-400/70 mb-0.5">החזרת</p>
-                      <PlayingCard card={pair.returned!} small />
-                    </div>
-                    <span className="text-[10px] text-slate-500 mr-1">ל{players[pair.fromSeat].name}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {currentReceivedCard && currentReturnCardObj && (
-            <div className="glass rounded-2xl p-4 border border-amber-500/15">
-              <p className="text-[10px] font-bold text-amber-400 mb-2 text-center">
-                {autoReturnIsReceived
-                  ? '↩️ אין קלף גבוה יותר — מחזיר את הקלף שקיבלת'
-                  : '⚠️ חובה להחזיר את הגבוה ביותר בצבע'}
-              </p>
-              <div className="flex items-center justify-center gap-3 mb-3">
-                <div className="text-center">
-                  <p className="text-[9px] text-green-400 mb-0.5">קיבלת</p>
-                  <PlayingCard card={currentReceivedCard} highlight />
-                </div>
-                <span className="text-amber-400 text-2xl animate-pulse">→</span>
-                <div className="text-center">
-                  <p className="text-[9px] text-rose-400 mb-0.5">מחזיר</p>
-                  <div className="ring-2 ring-amber-500/40 rounded-lg">
-                    <PlayingCard card={currentReturnCardObj} />
-                  </div>
-                </div>
-              </div>
-              <Button size="sm" variant="accent" onClick={handleAutoReturn} disabled={!isMyTurn} className="w-full rounded-xl">
-                החזר ({doneMyReturns + 1}/{totalMyReturns}) ✨
-              </Button>
-            </div>
-          )}
-        </div>
-      )}
-
       <div className="flex-1 flex flex-col justify-center">
         <PlayerHand
           cards={hand}
-          onCardClick={(!isReturning || !autoReturnCard) ? handleCardClick : undefined}
+          onCardClick={handleCardClick}
           selectedCards={selectedCards}
-          highlightCards={isReturning ? receivedCardIds : undefined}
           disabled={false}
-          maxSelect={isGiving ? cardsToGive : 1}
+          maxSelect={cardsToGive}
         />
       </div>
 
-      {isGiving && (
-        <div className="p-4 pb-6">
-          <Button
-            size="lg"
-            variant="glow"
-            className="w-full text-lg rounded-2xl"
-            disabled={!isMyTurn || selectedCards.size !== cardsToGive}
-            onClick={handleGiveCards}
-          >
-            תן {selectedCards.size}/{cardsToGive} קלפים
-          </Button>
-        </div>
-      )}
+      <div className="p-4 pb-6">
+        <Button
+          size="lg"
+          variant="glow"
+          className="w-full text-lg rounded-2xl"
+          disabled={!isMyTurn || selectedCards.size !== cardsToGive}
+          onClick={handleGiveCards}
+        >
+          תן {selectedCards.size}/{cardsToGive} קלפים
+        </Button>
+      </div>
     </div>
   );
 }

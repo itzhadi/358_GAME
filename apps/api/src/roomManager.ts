@@ -18,6 +18,7 @@ export interface Room {
   status: 'waiting' | 'playing' | 'finished';
   players: RoomPlayer[];
   gameState: GameState | null;
+  lastActivityAt: number;
 }
 
 class RoomManager {
@@ -52,6 +53,7 @@ class RoomManager {
         isHost: true,
       }],
       gameState: null,
+      lastActivityAt: Date.now(),
     };
     this.rooms.set(code, room);
     return room;
@@ -129,6 +131,7 @@ class RoomManager {
 
     try {
       room.gameState = gameReducer(room.gameState, action);
+      room.lastActivityAt = Date.now();
       if (room.gameState.phase === 'GAME_OVER') {
         room.status = 'finished';
       }
@@ -171,6 +174,28 @@ class RoomManager {
 
   removeRoom(code: string) {
     this.rooms.delete(code.toUpperCase());
+  }
+
+  cleanupStaleRooms() {
+    const now = Date.now();
+    const FINISHED_TTL = 5 * 60_000;
+    const WAITING_TTL = 15 * 60_000;
+    const PLAYING_IDLE_TTL = 30 * 60_000;
+
+    for (const [code, room] of this.rooms) {
+      const age = now - room.lastActivityAt;
+      const allDisconnected = room.players.every((p) => !p.connected);
+      if (room.status === 'finished' && age > FINISHED_TTL) {
+        console.log(`[cleanup] Removing finished room ${code} (idle ${Math.round(age / 1000)}s)`);
+        this.rooms.delete(code);
+      } else if (room.status === 'waiting' && allDisconnected && age > WAITING_TTL) {
+        console.log(`[cleanup] Removing abandoned waiting room ${code}`);
+        this.rooms.delete(code);
+      } else if (room.status === 'playing' && allDisconnected && age > PLAYING_IDLE_TTL) {
+        console.log(`[cleanup] Removing abandoned playing room ${code}`);
+        this.rooms.delete(code);
+      }
+    }
   }
 }
 

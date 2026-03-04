@@ -64,7 +64,7 @@ export function ReshuffleScreen() {
 
       <div className="text-4xl mb-2">🔄</div>
       <h2 className="text-xl font-black text-gradient-primary mb-1">
-        יד {handNumber} — חלוקה מחדש
+        יד {handNumber} - חלוקה מחדש
       </h2>
 
       {otherSideReshuffled && myTurn && (
@@ -101,9 +101,13 @@ export function ReshuffleScreen() {
 
       {!otherSideReshuffled && !iReshuffled && !iVotedOnline35 && !partnerVoteStatus && myTurn && (
         <p className="text-muted-foreground text-sm mb-4">
+          <span className="text-amber-400 font-bold">{gameState.targets[mySeat]}</span>
+          {' — '}
           {isOnline && mySide === '35'
-            ? 'בדוק את הקלפים שלך — שניכם צריכים להסכים לחלוקה מחדש'
-            : 'בדוק את הקלפים שלך — רוצה חלוקה מחדש?'}
+            ? <>בדוק את הקלפים שלך, גם <span className="font-bold text-emerald-400">{partnerName}</span> ({partnerTarget}) צריך להסכים לחלוקה מחדש</>
+            : mySide === '35'
+              ? <>בדוק את הקלפים שלך, גם <span className="font-bold text-emerald-400">{partnerName}</span> ({partnerTarget}) צריך להסכים</>
+              : 'בדוק את הקלפים שלך — רוצה חלוקה מחדש?'}
         </p>
       )}
 

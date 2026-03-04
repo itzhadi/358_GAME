@@ -24,10 +24,8 @@ export default function LocalPlayPage() {
   }
 
   const handleExit = () => {
-    if (confirm('בטוח שאתה רוצה לצאת מהמשחק?')) {
-      resetGame();
-      router.push('/');
-    }
+    resetGame();
+    router.push('/');
   };
 
   return <GameBoard onExit={handleExit} />;

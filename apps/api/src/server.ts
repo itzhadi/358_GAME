@@ -3,6 +3,7 @@ import cors from '@fastify/cors';
 import { Server as SocketIOServer } from 'socket.io';
 import { setupSocketHandlers } from './socket.js';
 import { setupRoutes } from './routes.js';
+import { roomManager } from './roomManager.js';
 
 const PORT = parseInt(process.env.PORT || '3001', 10);
 
@@ -34,6 +35,17 @@ async function main() {
   });
 
   setupSocketHandlers(io);
+
+  setInterval(() => roomManager.cleanupStaleRooms(), 5 * 60_000);
+
+  const shutdown = async () => {
+    console.log('Shutting down gracefully...');
+    io.close();
+    await fastify.close();
+    process.exit(0);
+  };
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 
   console.log(`🚀 API server running on port ${PORT}`);
   console.log(`🔌 Socket.IO ready`);

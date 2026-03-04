@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useGameStore } from '@/store/gameStore';
+import { Button } from '@/components/ui/button';
 import { DealScreen } from './screens/DealScreen';
 import { ExchangeScreen } from './screens/ExchangeScreen';
 import { CutterPickScreen } from './screens/CutterPickScreen';
@@ -23,10 +24,14 @@ interface GameBoardProps {
 }
 
 export function GameBoard({ onExit }: GameBoardProps) {
-  const { gameState, showPrivacyScreen, showTrickResult, showReceivedCards, showDealerKupa, showDealerReturns, aiSeats, runAiTurn, reshuffleNotification } = useGameStore();
+  const { gameState, showPrivacyScreen, showTrickResult, showReceivedCards, showDealerKupa, showDealerReturns, aiSeats, runAiTurn, reshuffleNotification, isConnected, mode, toastMessage, dismissToast, playerSeat, activePlayerSeat } = useGameStore();
   const aiTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const handleExitClick = onExit ? () => setShowExitConfirm(true) : undefined;
 
   const hasAI = aiSeats.size > 0;
+  const isOnline = mode === 'online';
+  const mySeat = isOnline ? (playerSeat ?? 0) : (hasAI ? 0 : activePlayerSeat);
   const currentSeat = gameState?.currentPlayerIndex ?? -1;
   const isNormalAiTurn = hasAI && currentSeat >= 0 && aiSeats.has(currentSeat);
   const phase = gameState?.phase;
@@ -48,7 +53,9 @@ export function GameBoard({ onExit }: GameBoardProps) {
   const reshuffleW8 = gameState?.reshuffleWindowFor8;
   const reshuffleW35 = gameState?.reshuffleWindowFor35;
 
+  // AI timer: only for local games — online AI is handled server-side
   useEffect(() => {
+    if (mode === 'online') return;
     const pendingTrick = useGameStore.getState().pendingTrickState;
     const reshuffleNotif = useGameStore.getState().reshuffleNotification;
     if (!isAiTurn || showTrickResult || showReceivedCards || showDealerKupa || showDealerReturns || pendingTrick || reshuffleNotif) return;
@@ -70,11 +77,11 @@ export function GameBoard({ onExit }: GameBoardProps) {
     return () => {
       if (aiTimerRef.current) clearTimeout(aiTimerRef.current);
     };
-  }, [isAiTurn, phase, currentSeat, showTrickResult, showReceivedCards, showDealerKupa, showDealerReturns, runAiTurn, exchangeProgress, trickNum, reshuffleW8, reshuffleW35, reshuffleNotification]);
+  }, [mode, isAiTurn, phase, currentSeat, showTrickResult, showReceivedCards, showDealerKupa, showDealerReturns, runAiTurn, exchangeProgress, trickNum, reshuffleW8, reshuffleW35, reshuffleNotification]);
 
-  // Heartbeat: retry AI if stuck (e.g. after a silent dispatch error)
+  // Heartbeat: retry AI if stuck — only for local games
   useEffect(() => {
-    if (!hasAI) return;
+    if (!hasAI || mode === 'online') return;
     const interval = setInterval(() => {
       const s = useGameStore.getState();
       if (!s.gameState || s.showTrickResult || s.showReceivedCards || s.showDealerKupa || s.showDealerReturns || s.pendingTrickState || s.reshuffleNotification) return;
@@ -86,7 +93,13 @@ export function GameBoard({ onExit }: GameBoardProps) {
       }
     }, 8000);
     return () => clearInterval(interval);
-  }, [hasAI]);
+  }, [hasAI, mode]);
+
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timer = setTimeout(() => dismissToast(), 5000);
+    return () => clearTimeout(timer);
+  }, [toastMessage, dismissToast]);
 
   useEffect(() => {
     if (!showTrickResult || !hasAI) return;
@@ -107,7 +120,7 @@ export function GameBoard({ onExit }: GameBoardProps) {
   if (showReceivedCards) {
     return (
       <div className="flex flex-col min-h-[100dvh]">
-        <GameStatusBar gameState={gameState} aiSeats={aiSeats} onExit={onExit} />
+        <GameStatusBar gameState={gameState} aiSeats={aiSeats} onExit={handleExitClick} mySeat={mySeat} />
         <ReceivedCardsScreen />
       </div>
     );
@@ -116,7 +129,7 @@ export function GameBoard({ onExit }: GameBoardProps) {
   if (showDealerKupa && gameState.dealerReceivedKupa.length > 0) {
     return (
       <div className="flex flex-col min-h-[100dvh]">
-        <GameStatusBar gameState={gameState} aiSeats={aiSeats} onExit={onExit} />
+        <GameStatusBar gameState={gameState} aiSeats={aiSeats} onExit={handleExitClick} mySeat={mySeat} />
         <DealerKupaScreen />
       </div>
     );
@@ -125,7 +138,7 @@ export function GameBoard({ onExit }: GameBoardProps) {
   if (showDealerReturns && (gameState.dealerHiddenReturns.length > 0 || gameState.dealerPendingReceived.length > 0)) {
     return (
       <div className="flex flex-col min-h-[100dvh]">
-        <GameStatusBar gameState={gameState} aiSeats={aiSeats} onExit={onExit} />
+        <GameStatusBar gameState={gameState} aiSeats={aiSeats} onExit={handleExitClick} mySeat={mySeat} />
         <DealerReturnsScreen />
       </div>
     );
@@ -181,7 +194,7 @@ export function GameBoard({ onExit }: GameBoardProps) {
   return (
     <div className="flex flex-col h-[100dvh] overflow-hidden">
       {!hideStatusBar && (
-        <GameStatusBar gameState={gameState} aiSeats={aiSeats} onExit={onExit} />
+        <GameStatusBar gameState={gameState} aiSeats={aiSeats} onExit={handleExitClick} mySeat={mySeat} />
       )}
       <div className="flex-1 flex flex-col min-h-0">{screen}</div>
       {showHistory && <TrickHistory gameState={gameState} aiSeats={aiSeats} />}
@@ -191,6 +204,53 @@ export function GameBoard({ onExit }: GameBoardProps) {
           <div className="glass-strong rounded-2xl px-8 py-5 text-center max-w-sm mx-4 animate-scale-in shadow-2xl border border-amber-500/30">
             <div className="text-3xl mb-2">🔄</div>
             <p className="text-lg font-bold text-amber-400 leading-relaxed">{reshuffleNotification}</p>
+          </div>
+        </div>
+      )}
+
+      {toastMessage && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[70] w-[90%] max-w-sm animate-slide-up">
+          <div className="glass-strong rounded-2xl px-5 py-4 text-center shadow-2xl border border-red-500/30">
+            <p className="text-sm font-medium text-red-300">{toastMessage}</p>
+            <button onClick={dismissToast} className="mt-2 text-xs text-muted-foreground hover:text-foreground transition-colors">סגור</button>
+          </div>
+        </div>
+      )}
+
+      {mode === 'online' && !isConnected && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="glass-strong rounded-2xl px-8 py-6 text-center max-w-xs mx-4 shadow-2xl border border-red-500/30">
+            <div className="text-3xl mb-3 animate-pulse">🔌</div>
+            <p className="text-lg font-bold text-red-400 mb-1">החיבור נותק</p>
+            <p className="text-sm text-muted-foreground animate-pulse">מתחבר מחדש...</p>
+          </div>
+        </div>
+      )}
+
+      {showExitConfirm && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="glass-strong rounded-2xl px-8 py-6 text-center max-w-xs mx-4 shadow-2xl border border-white/10 animate-scale-in">
+            <p className="text-lg font-bold text-foreground mb-1">יציאה מהמשחק</p>
+            <p className="text-sm text-muted-foreground mb-5">בטוח שאתה רוצה לצאת?</p>
+            <div className="flex gap-3 justify-center">
+              <Button
+                variant="outline"
+                className="flex-1 rounded-xl"
+                onClick={() => setShowExitConfirm(false)}
+              >
+                ביטול
+              </Button>
+              <Button
+                variant="destructive"
+                className="flex-1 rounded-xl"
+                onClick={() => {
+                  setShowExitConfirm(false);
+                  onExit?.();
+                }}
+              >
+                יציאה
+              </Button>
+            </div>
           </div>
         </div>
       )}

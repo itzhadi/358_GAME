@@ -110,6 +110,10 @@ export function TrickPlayScreen() {
 
           {/* Center table */}
           <div className="relative flex flex-col items-center justify-center py-1 sm:py-2 shrink">
+          <div className="flex items-center justify-center gap-4 text-base text-muted-foreground/70 font-bold mb-0.5">
+            <span>יד {Math.max(gameState.handNumber, 1)}</span>
+            <span>משחקון {trickNumber}/16</span>
+          </div>
           <div className="relative w-[92vw] sm:w-[55vw] max-w-[700px] h-[40vh] sm:h-[50vh] max-h-[380px] rounded-[1.5rem] sm:rounded-[2rem] border border-white/8 overflow-hidden game-table">
             <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(circle_at_50%_50%,white_1px,transparent_1px)] bg-[length:4px_4px]" />
 

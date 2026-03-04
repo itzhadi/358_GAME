@@ -57,6 +57,7 @@ function computeAiAction(state: GameState, aiSeat: number): GameAction | null {
 
     case 'EXCHANGE_RETURN': {
       if (!state.exchangeInfo) return null;
+      if (state.currentPlayerIndex !== aiSeat) return null;
       const { givings, givenCards, returnedCards } = state.exchangeInfo;
 
       for (const giving of givings) {
@@ -187,9 +188,8 @@ export function scheduleAiTurn(io: SocketIOServer, roomCode: string) {
 
   const action = computeAiAction(state, aiSeat);
   if (!action) {
-    // Safety net: if AI should act but computeAiAction returned null, retry after delay
     if (state.currentPlayerIndex === aiSeat) {
-      console.warn(`[aiRunner] computeAiAction returned null but AI is current player. phase=${state.phase}`);
+      console.warn(`[aiRunner] computeAiAction returned null but AI is current player. phase=${state.phase}, seat=${aiSeat}, handSize=${state.playerHands[aiSeat].length}`);
       const retryTimer = setTimeout(() => {
         aiTimers.delete(roomCode);
         scheduleAiTurn(io, roomCode);

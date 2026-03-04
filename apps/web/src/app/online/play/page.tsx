@@ -25,10 +25,8 @@ export default function OnlinePlayPage() {
     }
 
     const handleExit = () => {
-        if (confirm('האם אתה בטוח שברצונך לצאת?')) {
-            leaveRoom();
-            router.push('/online');
-        }
+        leaveRoom();
+        router.push('/online');
     };
 
     return <GameBoard onExit={handleExit} />;

@@ -42,6 +42,7 @@ interface GameStore {
   reshuffleNotification: string | null;
   reshuffleVoteStatus: { votedSeat: number; vote: 'accept' | 'decline' } | null;
   myReshuffleVote: 'accept' | 'decline' | null;
+  toastMessage: string | null;
 
   // Actions
   startLocalGame: (players: { id: string; name: string }[], victoryTarget: number, aiSeats?: number[]) => void;
@@ -60,6 +61,7 @@ interface GameStore {
   dismissDealerReturns: () => void;
   resetGame: () => void;
   runAiTurn: () => void;
+  dismissToast: () => void;
 
   // Helpers
   getLegalCardsForCurrentPlayer: () => Card[];
@@ -94,6 +96,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   reshuffleNotification: null,
   reshuffleVoteStatus: null,
   myReshuffleVote: null,
+  toastMessage: null,
   roomCode: null,
   playerId: null,
   playerSeat: null,
@@ -169,7 +172,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     });
 
     socket.on('room:closed', ({ reason }: { reason: string }) => {
-      alert(reason);
+      set({ toastMessage: reason });
       set({
         gameState: null,
         mode: 'local',
@@ -331,12 +334,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
     socket.on('error', ({ code, message }: { code: string; message: string }) => {
       console.error('Socket error:', code, message);
       if (message.includes('Room not found') || message.includes('Game not started')) {
-        alert('החדר לא נמצא — ייתכן שהשרת אותחל מחדש. יש ליצור משחק חדש.');
-        set({ gameState: null, roomCode: null, token: null, lobbyState: null });
+        set({ toastMessage: 'החדר לא נמצא — ייתכן שהשרת אותחל מחדש. יש ליצור משחק חדש.', gameState: null, roomCode: null, token: null, lobbyState: null });
       } else if (message.includes("'s turn")) {
         // Turn-order timing issue — ignore silently, state will sync
       } else {
-        alert(`שגיאה: ${message}`);
+        set({ toastMessage: `שגיאה: ${message}` });
       }
     });
 
@@ -355,7 +357,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           socket.once('connect_error', (err) => { clearTimeout(timeout); reject(err); });
         });
       } catch {
-        alert('לא ניתן להתחבר לשרת. ודא שהשרת רץ.');
+        set({ toastMessage: 'לא ניתן להתחבר לשרת. ודא שהשרת רץ.' });
         return;
       }
     }
@@ -372,7 +374,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           socket.once('connect_error', (err) => { clearTimeout(timeout); reject(err); });
         });
       } catch {
-        alert('לא ניתן להתחבר לשרת. ודא שהשרת רץ.');
+        set({ toastMessage: 'לא ניתן להתחבר לשרת. ודא שהשרת רץ.' });
         return;
       }
     }
@@ -390,6 +392,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (token) {
       socket.emit('room:leave', { token });
     }
+    socket.off('connect');
+    socket.off('disconnect');
+    socket.off('room:created');
+    socket.off('room:joined');
+    socket.off('room:state');
+    socket.off('room:closed');
+    socket.off('room:playerDisconnected');
+    socket.off('room:playerReconnected');
+    socket.off('game:privateHand');
+    socket.off('error');
+    socket.off('reshuffle:voteStatus');
     socket.disconnect();
     set({
       gameState: null,
@@ -806,6 +819,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       set({ showTrickResult: false });
     }
   },
+  dismissToast: () => set({ toastMessage: null }),
   dismissReceivedCards: () => set({ showReceivedCards: false }),
   dismissDealerKupa: () => set({ showDealerKupa: false }),
   dismissDealerReturns: () => set({ showDealerReturns: false }),

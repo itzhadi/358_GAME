@@ -25,8 +25,10 @@ function verifyToken(token: string): JWTPayload | null {
 }
 
 const RECONNECT_GRACE_MS = 45_000;
+const RESHUFFLE_VOTE_TIMEOUT_MS = 30_000;
 const disconnectTimers = new Map<string, NodeJS.Timeout>();
 const reshuffleVotes = new Map<string, Map<number, 'accept' | 'decline'>>();
+const reshuffleVoteTimers = new Map<string, NodeJS.Timeout>();
 
 function getSide35Seats(roomCode: string): number[] {
   const room = roomManager.getRoom(roomCode);
@@ -58,6 +60,8 @@ function handleSide35Vote(
 
   if (vote === 'decline') {
     reshuffleVotes.delete(payload.roomCode);
+    const vt = reshuffleVoteTimers.get(payload.roomCode);
+    if (vt) { clearTimeout(vt); reshuffleVoteTimers.delete(payload.roomCode); }
     broadcastSide35VoteStatus(io, payload.roomCode, null);
     applyAndBroadcast(io, payload.roomCode, {
       type: 'RESHUFFLE_DECLINE',
@@ -74,10 +78,27 @@ function handleSide35Vote(
       votedSeat: payload.seatIndex,
       vote: 'accept',
     });
+    const existingTimer = reshuffleVoteTimers.get(payload.roomCode);
+    if (!existingTimer) {
+      const timer = setTimeout(() => {
+        reshuffleVoteTimers.delete(payload.roomCode);
+        if (reshuffleVotes.has(payload.roomCode)) {
+          reshuffleVotes.delete(payload.roomCode);
+          broadcastSide35VoteStatus(io, payload.roomCode, null);
+          applyAndBroadcast(io, payload.roomCode, {
+            type: 'RESHUFFLE_DECLINE',
+            payload: { side: '35' },
+          });
+        }
+      }, RESHUFFLE_VOTE_TIMEOUT_MS);
+      reshuffleVoteTimers.set(payload.roomCode, timer);
+    }
     return;
   }
 
   reshuffleVotes.delete(payload.roomCode);
+  const voteTimer = reshuffleVoteTimers.get(payload.roomCode);
+  if (voteTimer) { clearTimeout(voteTimer); reshuffleVoteTimers.delete(payload.roomCode); }
   broadcastSide35VoteStatus(io, payload.roomCode, null);
 
   if (otherVote === 'accept') {
@@ -109,7 +130,18 @@ function broadcastSide35VoteStatus(
 
 function applyAndBroadcast(io: SocketIOServer, roomCode: string, action: GameAction) {
   const result = roomManager.applyAction(roomCode, action);
-  if ('error' in result) return;
+  if ('error' in result) {
+    console.error(`[applyAndBroadcast] Action ${action.type} failed for room ${roomCode}: ${result.error}`);
+    const room = roomManager.getRoom(roomCode);
+    if (room) {
+      for (const p of room.players) {
+        if (p.socketId) {
+          io.to(p.socketId).emit('error', { code: 'ACTION_FAILED', message: result.error });
+        }
+      }
+    }
+    return;
+  }
 
   const room = roomManager.getRoom(roomCode);
   if (!room) return;
@@ -356,6 +388,8 @@ export function setupSocketHandlers(io: SocketIOServer) {
       }
 
       reshuffleVotes.delete(payload.roomCode);
+      const rvt = reshuffleVoteTimers.get(payload.roomCode);
+      if (rvt) { clearTimeout(rvt); reshuffleVoteTimers.delete(payload.roomCode); }
       cancelAiTimer(payload.roomCode);
       roomManager.removeRoom(payload.roomCode);
     });
@@ -390,6 +424,8 @@ export function setupSocketHandlers(io: SocketIOServer) {
             }
           }
           reshuffleVotes.delete(result.code);
+          const rvt2 = reshuffleVoteTimers.get(result.code);
+          if (rvt2) { clearTimeout(rvt2); reshuffleVoteTimers.delete(result.code); }
           cancelAiTimer(result.code);
           roomManager.removeRoom(result.code);
         }

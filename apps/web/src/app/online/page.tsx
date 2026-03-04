@@ -18,7 +18,9 @@ export default function OnlineLobbyPage() {
     lobbyState,
     gameState,
     playerSeat,
-    isConnected
+    isConnected,
+    toastMessage,
+    dismissToast,
   } = useGameStore();
 
   const [mode, setMode] = useState<'menu' | 'create' | 'join'>('menu');
@@ -29,6 +31,16 @@ export default function OnlineLobbyPage() {
   const [maxPlayers, setMaxPlayers] = useState<2 | 3>(3);
   const [isJoining, setIsJoining] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    if (!toastMessage) return;
+    const timer = setTimeout(() => dismissToast(), 5000);
+    return () => clearTimeout(timer);
+  }, [toastMessage, dismissToast]);
+
+  useEffect(() => {
+    if (toastMessage) setIsJoining(false);
+  }, [toastMessage]);
 
   useEffect(() => {
     if (gameState && gameState.mode === 'online') {
@@ -123,7 +135,7 @@ export default function OnlineLobbyPage() {
                     </div>
                     <div className="flex flex-col">
                       <span className={isAiSlot ? 'font-bold text-blue-300' : player ? 'font-bold' : 'text-muted-foreground italic'}>
-                        {isAiSlot ? 'מחשב' : player ? player.name : 'ממתין...'}
+                        {isAiSlot ? 'בוט' : player ? player.name : 'ממתין...'}
                         {isMe && <span className="text-xs text-emerald-400 mr-1"> (אתה)</span>}
                       </span>
                       {!isAiSlot && player && i === 0 && <span className="text-[10px] text-amber-400">מארח</span>}
@@ -190,9 +202,19 @@ export default function OnlineLobbyPage() {
   }
 
   // Loading state while joining
+  const toastEl = toastMessage ? (
+    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[70] w-[90%] max-w-sm animate-slide-up">
+      <div className="glass-strong rounded-2xl px-5 py-4 text-center shadow-2xl border border-red-500/30">
+        <p className="text-sm font-medium text-red-300">{toastMessage}</p>
+        <button onClick={dismissToast} className="mt-2 text-xs text-muted-foreground hover:text-foreground transition-colors">סגור</button>
+      </div>
+    </div>
+  ) : null;
+
   if (isJoining) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[100dvh] p-6">
+        {toastEl}
         <div className="text-5xl mb-4 animate-pulse">🔌</div>
         <p className="text-lg font-bold text-gradient-primary mb-2">מתחבר לחדר...</p>
         <p className="text-sm text-muted-foreground mb-1">אנא המתן</p>
@@ -263,7 +285,7 @@ export default function OnlineLobbyPage() {
                     : 'glass text-muted-foreground hover:bg-white/10'
                 }`}
               >
-                <BotIcon size={16} /> 2 + מחשב
+                2 + בוט
               </button>
             </div>
           </div>
