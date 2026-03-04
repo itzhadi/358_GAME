@@ -1,11 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { useGameStore } from '@/store/gameStore';
 import { socket } from '@/lib/socket';
 import BotIcon from '@/components/BotIcon';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+type ServerStatus = 'checking' | 'waking' | 'ready' | 'error';
 
 export default function OnlineLobbyPage() {
   const router = useRouter();
@@ -31,6 +35,59 @@ export default function OnlineLobbyPage() {
   const [maxPlayers, setMaxPlayers] = useState<2 | 3>(3);
   const [isJoining, setIsJoining] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [serverStatus, setServerStatus] = useState<ServerStatus>('checking');
+  const keepAliveRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const pingServer = useCallback(async (): Promise<boolean> => {
+    try {
+      const res = await fetch(`${API_URL}/health`, { signal: AbortSignal.timeout(10000) });
+      return res.ok;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  // Pre-warm server on page load + periodic keep-alive
+  useEffect(() => {
+    let cancelled = false;
+    let attempt = 0;
+
+    const warmUp = async () => {
+      setServerStatus('checking');
+      const ok = await pingServer();
+      if (cancelled) return;
+
+      if (ok) {
+        setServerStatus('ready');
+      } else {
+        setServerStatus('waking');
+        // Retry with backoff until server responds
+        const retry = async () => {
+          attempt++;
+          const ok = await pingServer();
+          if (cancelled) return;
+          if (ok) {
+            setServerStatus('ready');
+          } else if (attempt < 12) {
+            setTimeout(retry, 3000);
+          } else {
+            setServerStatus('error');
+          }
+        };
+        setTimeout(retry, 2000);
+      }
+    };
+
+    warmUp();
+
+    // Keep-alive every 4 minutes while on the page
+    keepAliveRef.current = setInterval(() => { pingServer(); }, 4 * 60_000);
+
+    return () => {
+      cancelled = true;
+      if (keepAliveRef.current) clearInterval(keepAliveRef.current);
+    };
+  }, [pingServer]);
 
   useEffect(() => {
     if (!toastMessage) return;
@@ -223,13 +280,44 @@ export default function OnlineLobbyPage() {
     );
   }
 
+  const serverStatusEl = (
+    <div className="flex items-center gap-2 mb-4">
+      <span className={`w-2 h-2 rounded-full ${
+        serverStatus === 'ready' ? 'bg-green-500'
+          : serverStatus === 'error' ? 'bg-red-500'
+          : 'bg-amber-400 animate-pulse'
+      }`} />
+      <span className="text-xs text-muted-foreground">
+        {serverStatus === 'ready' && 'שרת מוכן'}
+        {serverStatus === 'checking' && 'בודק שרת...'}
+        {serverStatus === 'waking' && 'מעיר שרת (עד 30 שניות)...'}
+        {serverStatus === 'error' && (
+          <>
+            השרת לא מגיב{' '}
+            <button
+              className="underline text-amber-400 hover:text-amber-300"
+              onClick={() => {
+                setServerStatus('checking');
+                pingServer().then(ok => setServerStatus(ok ? 'ready' : 'error'));
+              }}
+            >
+              נסה שוב
+            </button>
+          </>
+        )}
+      </span>
+    </div>
+  );
+
   if (mode === 'menu') {
     return (
       <div className="flex flex-col items-center justify-center min-h-[100dvh] p-6 relative overflow-hidden">
         <div className="absolute top-[-10%] right-[10%] w-[300px] h-[300px] rounded-full bg-blue-600/10 blur-[100px] pointer-events-none" />
 
         <h1 className="text-3xl font-black text-gradient-primary mb-2">👥 משחק עם חברים</h1>
-        <p className="text-muted-foreground mb-10">שחקו עם חברים מכל מקום</p>
+        <p className="text-muted-foreground mb-6">שחקו עם חברים מכל מקום</p>
+
+        {serverStatusEl}
 
         <div className="w-full max-w-xs flex flex-col gap-4">
           <Button size="lg" variant="glow" className="w-full text-lg h-16 rounded-2xl" onClick={() => setMode('create')}>
@@ -298,9 +386,10 @@ export default function OnlineLobbyPage() {
             </div>
           </div>
         </div>
+        {serverStatus !== 'ready' && serverStatusEl}
         <div className="flex flex-col gap-3 w-full max-w-sm">
-          <Button size="lg" variant="glow" className="w-full text-lg rounded-2xl" disabled={!hostName.trim()} onClick={handleCreate}>
-            צור חדר
+          <Button size="lg" variant="glow" className="w-full text-lg rounded-2xl" disabled={!hostName.trim() || serverStatus !== 'ready'} onClick={handleCreate}>
+            {serverStatus === 'ready' ? 'צור חדר' : 'ממתין לשרת...'}
           </Button>
           <Button variant="ghost" onClick={() => setMode('menu')} className="text-muted-foreground">← חזרה</Button>
         </div>
@@ -337,9 +426,10 @@ export default function OnlineLobbyPage() {
           />
         </div>
       </div>
+      {serverStatus !== 'ready' && serverStatusEl}
       <div className="flex flex-col gap-3 w-full max-w-sm">
-        <Button size="lg" variant="glow" className="w-full text-lg rounded-2xl" disabled={inputRoomCode.length !== 6 || !playerName.trim()} onClick={handleJoin}>
-          הצטרף 🚀
+        <Button size="lg" variant="glow" className="w-full text-lg rounded-2xl" disabled={inputRoomCode.length !== 6 || !playerName.trim() || serverStatus !== 'ready'} onClick={handleJoin}>
+          {serverStatus === 'ready' ? 'הצטרף 🚀' : 'ממתין לשרת...'}
         </Button>
         <Button variant="ghost" onClick={() => setMode('menu')} className="text-muted-foreground">← חזרה</Button>
       </div>
