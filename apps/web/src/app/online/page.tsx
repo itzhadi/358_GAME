@@ -195,7 +195,8 @@ export default function OnlineLobbyPage() {
       <div className="flex flex-col items-center justify-center min-h-[100dvh] p-6">
         <div className="text-5xl mb-4 animate-pulse">🔌</div>
         <p className="text-lg font-bold text-gradient-primary mb-2">מתחבר לחדר...</p>
-        <p className="text-sm text-muted-foreground">אנא המתן</p>
+        <p className="text-sm text-muted-foreground mb-1">אנא המתן</p>
+        <p className="text-xs text-muted-foreground/60">ההתחברות הראשונה עשויה לקחת עד 30 שניות</p>
       </div>
     );
   }

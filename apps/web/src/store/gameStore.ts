@@ -350,7 +350,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!socket.connected) {
       try {
         await new Promise<void>((resolve, reject) => {
-          const timeout = setTimeout(() => reject(new Error('timeout')), 5000);
+          const timeout = setTimeout(() => reject(new Error('timeout')), 45000);
           socket.once('connect', () => { clearTimeout(timeout); resolve(); });
           socket.once('connect_error', (err) => { clearTimeout(timeout); reject(err); });
         });
@@ -367,7 +367,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     if (!socket.connected) {
       try {
         await new Promise<void>((resolve, reject) => {
-          const timeout = setTimeout(() => reject(new Error('timeout')), 5000);
+          const timeout = setTimeout(() => reject(new Error('timeout')), 45000);
           socket.once('connect', () => { clearTimeout(timeout); resolve(); });
           socket.once('connect_error', (err) => { clearTimeout(timeout); reject(err); });
         });

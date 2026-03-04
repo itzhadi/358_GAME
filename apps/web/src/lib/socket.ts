@@ -6,9 +6,10 @@ export const socket: Socket = io(API_URL, {
     autoConnect: false,
     withCredentials: true,
     reconnection: true,
-    reconnectionAttempts: 10,
-    reconnectionDelay: 500,
-    reconnectionDelayMax: 5000,
+    reconnectionAttempts: 15,
+    reconnectionDelay: 1000,
+    reconnectionDelayMax: 10000,
+    timeout: 45000,
 });
 
 if (typeof document !== 'undefined') {
