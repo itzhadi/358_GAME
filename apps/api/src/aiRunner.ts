@@ -102,7 +102,7 @@ function computeAiAction(state: GameState, aiSeat: number): GameAction | null {
 
 function getDelay(phase: string): number {
   switch (phase) {
-    case 'TRICK_PLAY': return 1200;
+    case 'TRICK_PLAY': return 800;
     case 'CUTTER_PICK': return 2800;
     case 'EXCHANGE_GIVE':
     case 'EXCHANGE_RETURN': return 600;
