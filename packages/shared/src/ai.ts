@@ -47,19 +47,19 @@ interface GameIntel {
   tricksNeeded: number;
   tricksLeft: number;
   overTarget: boolean;
-  surplus: number; // how many tricks OVER target (negative = deficit)
+  surplus: number;
+  mode: 'CONTRACT' | 'FARM';
   playedCards: Card[];
-  allKnown: Card[]; // played + in my hand + on current trick
-  opponentVoids: Set<string>; // "seat-suit" pairs where opponent is VOID
+  allKnown: Card[];
+  opponentVoids: Set<string>;
   cutterSuit: Suit | null;
   opponents: { seat: number; target: number; tricks: number; needed: number; over: boolean }[];
   cumulativeScores: number[];
   handNumber: number;
   victoryTarget: number;
-  // Position in the current trick
   trickCards: { seatIndex: number; card: Card }[];
   isLeading: boolean;
-  isLast: boolean; // 3rd to play
+  isLast: boolean;
   isSecond: boolean;
 }
 
@@ -120,6 +120,7 @@ function buildIntel(hand: Card[], gameState: GameState): GameIntel {
     tricksLeft,
     overTarget,
     surplus,
+    mode: overTarget ? 'FARM' as const : 'CONTRACT' as const,
     playedCards,
     allKnown,
     opponentVoids,
@@ -186,12 +187,6 @@ function estimateTricksICanWin(hand: Card[], intel: GameIntel): number {
     }
   }
   return est;
-}
-
-function shouldStillCompete(intel: GameIntel): boolean {
-  if (intel.surplus >= 3) return false;
-  if (intel.surplus <= 1) return true;
-  return intel.opponents.some(o => o.needed >= 3);
 }
 
 // ============================================================
@@ -455,27 +450,21 @@ export function aiPlayCard(
 // ============================================================
 
 function proLead(legal: Card[], hand: Card[], intel: GameIntel): string {
-  const { cutterSuit, tricksNeeded, tricksLeft, overTarget, surplus, myTarget } = intel;
+  const { cutterSuit, tricksNeeded, tricksLeft, myTarget, mode } = intel;
   const nonCutter = cutterSuit ? legal.filter((c) => c.suit !== cutterSuit) : legal;
   const cutters = cutterSuit ? sortDesc(legal.filter((c) => c.suit === cutterSuit)) : [];
 
-  // ===== OVER TARGET — only actively lose if way over or opponents are comfortable =====
-  if (overTarget && !shouldStillCompete(intel)) return leadToLose(legal, hand, intel);
+  // ===== FARM MODE — aggressively take every extra trick =====
+  if (mode === 'FARM') return farmLead(legal, hand, intel);
 
-  // ===== ENDGAME (last 4–6 tricks): math-based =====
+  // ===== CONTRACT: ENDGAME (last 4–6 tricks): math-based =====
   if (tricksLeft <= 6 && tricksNeeded > 0) {
     return endgameLead(legal, hand, intel);
   }
 
-  // ===== ROLE-SPECIFIC ADJUSTMENTS =====
-
-  // --- TARGET 8 (The Captain): aggressive, take control early ---
+  // ===== CONTRACT: ROLE-SPECIFIC =====
   if (myTarget === 8) return captainLead(legal, hand, intel, nonCutter, cutters);
-
-  // --- TARGET 5 (The Balancer): flexible, control the tempo ---
   if (myTarget === 5) return balancerLead(legal, hand, intel, nonCutter, cutters);
-
-  // --- TARGET 3 (The Sergeant): careful, don't over-commit ---
   return sergeantLead(legal, hand, intel, nonCutter, cutters);
 }
 
@@ -494,14 +483,15 @@ function captainLead(
 
   const nonCutterMasters = nonCutter.filter((c) => isMaster(c, intel.allKnown));
 
-  // Reserve cutters for later control: always keep at least 2
-  // Each cutter lead is itself a winning trick, so spending cutters isn't wasted
-  const reserveMin = Math.min(cutters.length, 2);
+  // CONTRACT: reserve cutters proportional to remaining need
+  // Only extract opponent cutters if we need those non-cutter tricks
+  const estimatedWins = estimateTricksICanWin(hand, intel);
+  const reserveMin = Math.min(cutters.length, intel.tricksNeeded <= cutters.length ? intel.tricksNeeded : 2);
   const canSpendCutters = cutters.length > reserveMin;
+  const needsExtraction = estimatedWins < intel.tricksNeeded + 2;
 
-  // ── PHASE 1: Clear opponents' cutters FIRST ──
-  // Lead high cutters (A, K, Q) to exhaust opponents before cashing non-cutter winners
-  if (cutters.length > 0 && oppCutters > 0 && !bothVoidInCutter && canSpendCutters) {
+  // ── PHASE 1: Clear opponents' cutters (only when needed for CONTRACT) ──
+  if (cutters.length > 0 && oppCutters > 0 && !bothVoidInCutter && canSpendCutters && needsExtraction) {
     const cutterMasters = cutters.filter((c) => isMaster(c, intel.allKnown));
 
     // Lead cutter masters (guaranteed to win)
@@ -567,19 +557,18 @@ function balancerLead(
     if (disruptLead) return disruptLead;
   }
 
-  // 3. Cutter masters
-  if (cutters.length > 0) {
-    const cutterMasters = cutters.filter((c) => isMaster(c, intel.allKnown));
-    if (cutterMasters.length > 0) return cutterMasters[0].id;
-  }
-
-  // 4. Lead safe high cards (masters/near-masters only)
+  // 3. Lead safe high cards (masters only)
   const aggressive = highestFromStrongest(nonCutter, hand, intel);
   if (aggressive) return aggressive;
 
-  // 5. Lead LOW to establish high cards
+  // 4. Lead LOW to establish high cards
   const establish = leadLowToEstablish(nonCutter, hand, intel);
   if (establish) return establish;
+
+  // 5. Last resort: forced to lead cutter (no non-cutter cards left)
+  if (nonCutter.length === 0 && cutters.length > 0) {
+    return sortAsc(cutters)[0].id;
+  }
 
   return lowestFromLongest(nonCutter, hand, intel) || sortAsc(legal)[0].id;
 }
@@ -595,11 +584,6 @@ function sergeantLead(
   if (masters.length > 0) return pickBestMasterToLead(masters, hand, intel);
 
   if (tricksNeeded > 0) {
-    if (cutters.length > 0) {
-      const cutterMasters = cutters.filter((c) => isMaster(c, intel.allKnown));
-      if (cutterMasters.length > 0) return cutterMasters[0].id;
-    }
-
     const aggressive = highestFromStrongest(nonCutter, hand, intel);
     if (aggressive) return aggressive;
 
@@ -610,6 +594,10 @@ function sergeantLead(
   const dangerCards = findDangerousHighCards(nonCutter, hand, intel);
   if (dangerCards.length > 0) return dangerCards[0].id;
 
+  if (nonCutter.length === 0 && cutters.length > 0) {
+    return sortAsc(cutters)[0].id;
+  }
+
   return lowestFromShortest(nonCutter, hand, intel) || sortAsc(legal)[0].id;
 }
 
@@ -618,11 +606,10 @@ function sergeantLead(
 // ============================================================
 
 function endgameLead(legal: Card[], hand: Card[], intel: GameIntel): string {
-  const { cutterSuit, tricksNeeded, allKnown } = intel;
+  const { cutterSuit, tricksNeeded, allKnown, myTarget } = intel;
   const nonCutter = cutterSuit ? legal.filter((c) => c.suit !== cutterSuit) : legal;
   const cutters = cutterSuit ? sortDesc(legal.filter((c) => c.suit === cutterSuit)) : [];
 
-  // Count how many guaranteed wins I have
   let guaranteedWins = 0;
   const masterCards: Card[] = [];
   for (const suit of SUITS) {
@@ -632,61 +619,103 @@ function endgameLead(legal: Card[], hand: Card[], intel: GameIntel): string {
     }
   }
 
-  // If guaranteed wins >= needed → cash them out
+  // Cash masters when enough to reach target
   if (guaranteedWins >= tricksNeeded && masterCards.length > 0) {
-    // Play masters from the suit with the most masters (cash out sequence)
     return pickBestMasterToLead(masterCards, hand, intel);
   }
 
-  // Not enough guaranteed wins → need to gamble strategically
-  // Lead low from a suit where one more round will promote our high card to master
-  for (const suit of SUITS) {
-    if (suit === cutterSuit) continue;
-    const mySuit = sortDesc(suitCards(nonCutter, suit));
-    if (mySuit.length < 2) continue;
-    const unknown = unknownInSuit(suit, allKnown);
-    const higherThanMyBest = unknown.filter((c) => RANK_VALUE[c.rank] > RANK_VALUE[mySuit[0].rank]);
-    if (higherThanMyBest.length === 1) {
-      // Only ONE card higher is out — lead low to flush it, then our card becomes master
-      return mySuit[mySuit.length - 1].id;
+  // TARGET 8 SAFETY: don't gamble — use cutters to close the gap first
+  if (myTarget === 8 && tricksNeeded >= 3 && cutters.length > 0) {
+    const cutterMasters = cutters.filter((c) => isMaster(c, allKnown));
+    if (cutterMasters.length > 0) return cutterMasters[0].id;
+    if (cutters.length >= 2) return cutters[0].id;
+  }
+
+  // Establishment gamble: lead low to flush 1 remaining higher card
+  if (!(myTarget === 8 && tricksNeeded >= 3)) {
+    for (const suit of SUITS) {
+      if (suit === cutterSuit) continue;
+      const mySuit = sortDesc(suitCards(nonCutter, suit));
+      if (mySuit.length < 2) continue;
+      const unknown = unknownInSuit(suit, allKnown);
+      const higherThanMyBest = unknown.filter((c) => RANK_VALUE[c.rank] > RANK_VALUE[mySuit[0].rank]);
+      if (higherThanMyBest.length === 1) {
+        return mySuit[mySuit.length - 1].id;
+      }
     }
   }
 
-  // Lead cutters to clear remaining opponent cutters if I need non-cutter tricks
+  // Clear remaining opponent cutters
   if (cutters.length > 0) {
     const oppCutters = remainingCuttersInOpponents(hand, intel);
     if (oppCutters > 0 && oppCutters <= cutters.length) {
-      return cutters[0].id; // draw out their last cutters
+      return cutters[0].id;
     }
   }
 
-  // Default: master or lowest
   if (masterCards.length > 0) return masterCards[0].id;
   return sortAsc(nonCutter.length > 0 ? nonCutter : legal)[0].id;
 }
 
 // ============================================================
-// LEAD TO LOSE — when over target
+// FARM LEADING — maximize overtricks aggressively
 // ============================================================
 
-function leadToLose(legal: Card[], hand: Card[], intel: GameIntel): string {
-  const { cutterSuit, allKnown } = intel;
+function farmLead(legal: Card[], hand: Card[], intel: GameIntel): string {
+  const { cutterSuit } = intel;
   const nonCutter = cutterSuit ? legal.filter((c) => c.suit !== cutterSuit) : legal;
+  const cutters = cutterSuit ? sortDesc(legal.filter((c) => c.suit === cutterSuit)) : [];
 
-  if (nonCutter.length > 0) {
-    // Lead the LOWEST card from a suit where opponents have higher cards
-    let best: Card | null = null;
-    let bestScore = -Infinity;
-    for (const c of nonCutter) {
-      const unknown = unknownInSuit(c.suit, allKnown);
-      const higherOut = unknown.filter((u) => RANK_VALUE[u.rank] > RANK_VALUE[c.rank]).length;
-      // More higher cards = safer to lose. Lower rank = better dump.
-      const score = higherOut * 40 - RANK_VALUE[c.rank] * 15;
-      if (score > bestScore) { bestScore = score; best = c; }
-    }
-    if (best) return best.id;
+  // 1. Cash ALL masters (any suit — guaranteed wins)
+  const allMasters = legal.filter((c) => isMaster(c, intel.allKnown));
+  if (allMasters.length > 0) {
+    // Prefer longest suit to start milking sequences
+    return pickBestMasterToLead(allMasters, hand, intel);
   }
-  return sortAsc(legal)[0].id;
+
+  // 2. Milk long suits — lead from suit with 5+ cards to drain opponents
+  for (const suit of SUITS) {
+    if (suit === cutterSuit) continue;
+    const mySuit = sortDesc(suitCards(nonCutter, suit));
+    if (mySuit.length >= 5) {
+      const masters = mySuit.filter((c) => isMaster(c, intel.allKnown));
+      if (masters.length > 0) return masters[0].id;
+      return mySuit[mySuit.length - 1].id;
+    }
+  }
+
+  // 3. Lead safe high cards (masters/near-masters)
+  const aggressive = highestFromStrongest(nonCutter, hand, intel);
+  if (aggressive) return aggressive;
+
+  // 4. Lead LOW to establish — flush out higher cards
+  const establish = leadLowToEstablish(nonCutter, hand, intel);
+  if (establish) return establish;
+
+  // 5. Lead suits where opponents are void (forces cuts/dumps)
+  const voidLead = farmLeadToVoid(nonCutter, hand, intel);
+  if (voidLead) return voidLead;
+
+  // 6. Use cutter masters
+  if (cutters.length > 0) {
+    const cutterMasters = cutters.filter((c) => isMaster(c, intel.allKnown));
+    if (cutterMasters.length > 0) return cutterMasters[0].id;
+  }
+
+  // 7. Default: lowest from longest
+  return lowestFromLongest(nonCutter, hand, intel) || sortAsc(legal)[0].id;
+}
+
+function farmLeadToVoid(nonCutter: Card[], hand: Card[], intel: GameIntel): string | null {
+  for (const opp of intel.opponents) {
+    for (const suit of SUITS) {
+      if (suit === intel.cutterSuit) continue;
+      if (!isOpponentVoid(opp.seat, suit, intel)) continue;
+      const mySuit = sortAsc(suitCards(nonCutter, suit));
+      if (mySuit.length > 0) return mySuit[0].id;
+    }
+  }
+  return null;
 }
 
 // ============================================================
@@ -789,10 +818,7 @@ function highestFromStrongest(cards: Card[], hand: Card[], intel: GameIntel): st
     const unknown = unknownInSuit(c.suit, intel.allKnown);
     const higherOut = unknown.filter(u => RANK_VALUE[u.rank] > RANK_VALUE[c.rank]).length;
 
-    // NEVER lead a non-master with 2+ higher cards out — it will just lose
-    if (higherOut >= 2) continue;
-    // Near-master (1 higher out) — only lead if it's K or A
-    if (higherOut === 1 && RANK_VALUE[c.rank] < 13) continue;
+    if (higherOut > 0) continue;
 
     const score = RANK_VALUE[c.rank] * 10 + suitLen * 5;
     if (score > bestScore) { bestScore = score; bestCard = c; }
@@ -880,7 +906,7 @@ function proFollow(legal: Card[], leadSuit: Suit, hand: Card[], intel: GameIntel
 function followSuit(
   legal: Card[], leadSuit: Suit, hand: Card[], intel: GameIntel, winner: WinnerInfo,
 ): string {
-  const { cutterSuit, overTarget, tricksNeeded, isLast, isSecond, allKnown, myTarget, trickCards } = intel;
+  const { cutterSuit, isLast, isSecond, allKnown, trickCards } = intel;
   const mySuit = sortDesc(legal.filter((c) => c.suit === leadSuit));
 
   // Cutter already played & we're following non-cutter → can't win → play LOWEST to preserve high cards
@@ -888,26 +914,20 @@ function followSuit(
     return mySuit[mySuit.length - 1].id;
   }
 
-  // ===== OVER TARGET → still compete if opponents need tricks =====
-  if (overTarget) {
-    const beatsWinner = mySuit.filter((c) => RANK_VALUE[c.rank] > winner.value);
-    if (shouldStillCompete(intel) && beatsWinner.length > 0) {
-      if (isLast) return beatsWinner[beatsWinner.length - 1].id;
-      if (isSecond) {
-        const masterBeater = beatsWinner.find(c => isMaster(c, allKnown));
-        if (masterBeater) return masterBeater.id;
-      }
-    }
-    // Can't win → play LOWEST to preserve high cards for future tricks
-    return mySuit[mySuit.length - 1].id;
-  }
-
+  // Both modes use the same follow logic: win cheaply, preserve high cards when losing
+  // try to win cheaply, preserve high cards when losing
   const beaters = mySuit.filter((c) => RANK_VALUE[c.rank] > winner.value);
 
   // ========= LAST TO PLAY (3rd player) — perfect information =========
   if (isLast) {
     if (beaters.length > 0) {
-      return beaters[beaters.length - 1].id;
+      const cheapest = beaters[beaters.length - 1];
+      if (RANK_VALUE[cheapest.rank] >= 11 && !isMaster(cheapest, allKnown)) {
+        const desperate = intel.mode === 'CONTRACT'
+          && intel.tricksNeeded >= intel.tricksLeft - 1;
+        if (!desperate) return mySuit[mySuit.length - 1].id;
+      }
+      return cheapest.id;
     }
     return mySuit[mySuit.length - 1].id;
   }
@@ -918,8 +938,12 @@ function followSuit(
       const unknown = unknownInSuit(leadSuit, allKnown);
       const higherUnknown = unknown.filter((c) => RANK_VALUE[c.rank] > RANK_VALUE[beaters[0].rank]);
 
-      // Our best beater is a MASTER → safe to play cheapest beater
+      // Our best beater is a MASTER → play cheapest MASTER (not just cheapest beater)
       if (higherUnknown.length === 0) {
+        const masterBeaters = beaters.filter(c => isMaster(c, allKnown));
+        if (masterBeaters.length > 0) {
+          return masterBeaters[masterBeaters.length - 1].id;
+        }
         return beaters[beaters.length - 1].id;
       }
 
@@ -959,20 +983,38 @@ function followSuit(
 function cantFollowSuit(
   legal: Card[], leadSuit: Suit, hand: Card[], intel: GameIntel, winner: WinnerInfo,
 ): string {
-  const { cutterSuit, overTarget, tricksNeeded, isLast, isSecond, allKnown, myTarget, trickCards } = intel;
+  const { cutterSuit, tricksNeeded, isLast, allKnown, myTarget, trickCards } = intel;
   const myCutters = cutterSuit ? sortAsc(legal.filter((c) => c.suit === cutterSuit)) : [];
 
-  // ===== OVER TARGET → still cut if it blocks a hungry opponent =====
-  if (overTarget) {
-    if (shouldStillCompete(intel) && myCutters.length > 0 && isLast) {
-      const winnerOpp = intel.opponents.find(o => o.seat === winner.seatIndex);
-      if (winnerOpp && winnerOpp.needed >= 2) return myCutters[0].id;
+  // ===== FARM MODE → cut aggressively for every extra trick =====
+  if (intel.mode === 'FARM' && myCutters.length > 0) {
+    const existingCutters = trickCards.filter(
+      (cp) => cutterSuit && cp.card.suit === cutterSuit,
+    );
+    if (existingCutters.length > 0) {
+      const maxExisting = Math.max(...existingCutters.map((cp) => RANK_VALUE[cp.card.rank]));
+      const overCutters = myCutters.filter((c) => RANK_VALUE[c.rank] > maxExisting);
+      if (overCutters.length > 0) return overCutters[0].id;
+      return strategicDump(legal, hand, intel);
     }
+    if (isLast) return myCutters[0].id;
+    const thirdPlayer = [0, 1, 2].find(
+      (s) => s !== intel.mySeat && !trickCards.some((cp) => cp.seatIndex === s),
+    );
+    const thirdMightCut = thirdPlayer !== undefined &&
+      isOpponentVoid(thirdPlayer, leadSuit, intel);
+    if (!thirdMightCut) return myCutters[0].id;
+    const unknownCutters = unknownInSuit(cutterSuit!, allKnown);
+    const higherUnknown = unknownCutters.filter(
+      (c) => RANK_VALUE[c.rank] > RANK_VALUE[myCutters[0].rank],
+    );
+    if (higherUnknown.length === 0) return myCutters[0].id;
     return strategicDump(legal, hand, intel);
   }
+  if (intel.mode === 'FARM') return strategicDump(legal, hand, intel);
 
-  // ===== HAVE CUTTERS → consider cutting (even slightly over target to deny opponents) =====
-  if (myCutters.length > 0 && (tricksNeeded > 0 || shouldStillCompete(intel))) {
+  // ===== CONTRACT MODE → cut to reach target =====
+  if (myCutters.length > 0 && tricksNeeded > 0) {
     const existingCutters = trickCards.filter(
       (cp) => cutterSuit && cp.card.suit === cutterSuit,
     );

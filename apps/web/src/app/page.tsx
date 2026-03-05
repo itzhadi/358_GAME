@@ -64,16 +64,16 @@ export default function HomePage() {
           alt="3-5-8"
           width={700}
           height={600}
-          className="w-[68vw] sm:w-[40vw] max-w-[450px] h-auto drop-shadow-2xl"
+          className="w-[55vw] sm:w-[32vw] md:w-[26vw] max-w-[340px] h-auto drop-shadow-2xl"
           priority
         />
       </div>
 
       {/* Subtitle */}
-      <p className="text-muted-foreground text-base sm:text-lg tracking-wide mb-8 mt-1 z-10">משחק קלפים לשלושה שחקנים</p>
+      <p className="text-muted-foreground text-base sm:text-lg tracking-wide mb-6 mt-1 z-10">משחק קלפים לשלושה שחקנים</p>
 
       {/* Buttons */}
-      <div className="w-full max-w-sm flex flex-col gap-3.5 relative z-10">
+      <div className="w-full max-w-xs sm:max-w-sm flex flex-col gap-3 relative z-10">
         <Button size="lg" variant="glow" className="w-full text-lg h-16 rounded-2xl" onClick={() => router.push('/local/vs-computer')}>
           שחק סולו
         </Button>
